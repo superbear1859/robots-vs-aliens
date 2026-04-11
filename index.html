@@ -464,7 +464,9 @@
         const mouse = {
             x: undefined,
             y: undefined,
-            clicked: false
+            clicked: false,
+            dropped: false,
+            clearCoords: false
         };
 
         let selectedCardType = null;
@@ -509,13 +511,17 @@
         canvas.addEventListener('mousemove', (e) => { updateMousePos(e.clientX, e.clientY); });
         canvas.addEventListener('mouseleave', () => { mouse.x = undefined; mouse.y = undefined; });
         canvas.addEventListener('mousedown', () => { mouse.clicked = true; });
-        canvas.addEventListener('mouseup', () => { mouse.clicked = false; });
+        canvas.addEventListener('mouseup', () => { 
+            mouse.clicked = false; 
+            mouse.dropped = true; 
+        });
 
         // --- Mobile Touch Events ---
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault(); // Prevents the browser from zooming/scrolling
             updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
             mouse.clicked = true;
+            mouse.dropped = false;
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -525,9 +531,12 @@
 
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
+            if (e.changedTouches.length > 0) {
+                updateMousePos(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
             mouse.clicked = false;
-            mouse.x = undefined; // Clears coordinate so ghost-cursor disappears
-            mouse.y = undefined;
+            mouse.dropped = true;
+            mouse.clearCoords = true; // Clears the ghost cursor once you lift your finger
         }, { passive: false });
 
         // UI Buttons
@@ -1210,39 +1219,48 @@
             }
 
             let startY = getGridStartY();
-            if (mouse.clicked && selectedCardType !== null && mouse.y > startY && mouse.y < startY + (activeRows * CELL_SIZE) && mouse.x > GRID_START_X && mouse.x < GRID_START_X + (COLS * CELL_SIZE)) {
-                let gridX = mouse.x - (mouse.x - GRID_START_X) % CELL_SIZE;
-                let gridY = mouse.y - (mouse.y - startY) % CELL_SIZE;
+            let inGrid = mouse.y > startY && mouse.y < startY + (activeRows * CELL_SIZE) && mouse.x > GRID_START_X && mouse.x < GRID_START_X + (COLS * CELL_SIZE);
 
-                let defenderIndex = -1;
-                for (let i = 0; i < defenders.length; i++) {
-                    if (defenders[i].x === gridX && defenders[i].y === gridY) {
-                        defenderIndex = i;
-                        break;
-                    }
-                }
+            if ((mouse.clicked || mouse.dropped) && selectedCardType !== null) {
+                if (inGrid) {
+                    let gridX = mouse.x - (mouse.x - GRID_START_X) % CELL_SIZE;
+                    let gridY = mouse.y - (mouse.y - startY) % CELL_SIZE;
 
-                let card = cardTypes.find(c => c.id === selectedCardType);
-
-                if (selectedCardType === 6) { // Dig Tool interaction
-                    if (defenderIndex !== -1) {
-                        defenders.splice(defenderIndex, 1);
-                        card.currentCooldown = card.cooldown; 
-                        selectedCardType = null; 
-                        SoundEngine.drill(); 
-                    }
-                    mouse.clicked = false; 
-                } else { // Normal Bot Placement
-                    if (defenderIndex === -1) {
-                        if (energy >= card.cost && card.currentCooldown <= 0) {
-                            defenders.push(new Defender(gridX, gridY, card));
-                            energy -= card.cost;
-                            card.currentCooldown = card.cooldown; 
-                            selectedCardType = null; 
-                            SoundEngine.place(); 
+                    let defenderIndex = -1;
+                    for (let i = 0; i < defenders.length; i++) {
+                        if (defenders[i].x === gridX && defenders[i].y === gridY) {
+                            defenderIndex = i;
+                            break;
                         }
                     }
+
+                    let card = cardTypes.find(c => c.id === selectedCardType);
+
+                    if (selectedCardType === 6) { // Dig Tool interaction
+                        if (defenderIndex !== -1) {
+                            defenders.splice(defenderIndex, 1);
+                            card.currentCooldown = card.cooldown; 
+                            selectedCardType = null; 
+                            SoundEngine.drill(); 
+                        }
+                    } else { // Normal Bot Placement
+                        if (defenderIndex === -1) {
+                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                                defenders.push(new Defender(gridX, gridY, card));
+                                energy -= card.cost;
+                                card.currentCooldown = card.cooldown; 
+                                selectedCardType = null; 
+                                SoundEngine.place(); 
+                            }
+                        }
+                    }
+                    mouse.clicked = false; 
+                    mouse.dropped = false;
+                } else if (mouse.y > TOP_BAR_HEIGHT) {
+                    // If they tapped or dropped the bot outside the top bar and outside the grid, cancel the selection!
+                    selectedCardType = null;
                     mouse.clicked = false;
+                    mouse.dropped = false;
                 }
             }
 
@@ -1555,7 +1573,13 @@
                 if (gameOver) break;
             }
 
-            if(mouse.clicked) mouse.clicked = false;
+            if (mouse.clicked) mouse.clicked = false;
+            if (mouse.dropped) mouse.dropped = false;
+            if (mouse.clearCoords) {
+                mouse.x = undefined;
+                mouse.y = undefined;
+                mouse.clearCoords = false;
+            }
 
             if (gameOver) {
                 endGame();
