@@ -15,11 +15,13 @@
         }
 
         html, body {
-            position: fixed; /* Strictly locks the viewport to prevent all page scrolling/bouncing */
             width: 100%;
             height: 100%;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
             overscroll-behavior: none; /* Prevents pull-to-refresh and overscroll glow effects */
+            touch-action: none; /* Strictly disables all browser scrolling and zooming gestures */
         }
 
         body {
@@ -29,7 +31,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0;
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(20, 10, 40, 0.4), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(10, 30, 40, 0.4), transparent 25%);
@@ -82,8 +83,10 @@
         #orientationWarning {
             display: none;
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh; height: 100dvh;
+            top: 0; 
+            left: 0;
+            right: 0;
+            bottom: 0; /* Stretching to all 4 corners guarantees perfect centering */
             background: #050510;
             z-index: 99999;
             flex-direction: column;
@@ -221,6 +224,7 @@
             margin-bottom: 10px;
             overscroll-behavior: contain; /* Prevents manual scrolling from bleeding into the background */
             -webkit-overflow-scrolling: touch; /* Ensures smooth touch scrolling on iOS */
+            touch-action: pan-y; /* Specifically allows vertical scrolling just for the database log */
         }
 
         #manualContent::-webkit-scrollbar { width: 8px; }
