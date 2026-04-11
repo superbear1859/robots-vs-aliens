@@ -266,6 +266,13 @@
             text-shadow: none;
         }
 
+        /* Add this new block to give the SVGs a default size on desktop/portrait */
+        .manual-card h3 svg {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
         .manual-card p {
             font-size: 14px !important;
             margin: 5px 0 !important;
