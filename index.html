@@ -882,6 +882,17 @@
                 ctx.shadowColor = this.card.color;
                 ctx.shadowBlur = 10;
                 
+                // --- NEW BATTERY BOT SURGE/FLASH EFFECT ---
+                if (this.isGenerator) {
+                    let timeToGenerate = 400 - (this.timer % 400);
+                    // Flash rapidly and glow bright white for the last 60 frames (~1 second) before generating
+                    if (timeToGenerate < 60) { 
+                        ctx.globalAlpha = 0.5 + Math.abs(Math.sin(frame * 0.4)) * 0.5;
+                        ctx.shadowColor = "#fff"; 
+                        ctx.shadowBlur = 20;
+                    }
+                }
+
                 ctx.fillStyle = "#1e293b";
                 ctx.strokeStyle = this.card.color;
                 ctx.lineWidth = 3;
@@ -917,7 +928,10 @@
                 this.timer++;
 
                 if (this.isGenerator && this.timer % 400 === 0) {
-                    energyDrops.push(new Energy(this.x + CELL_SIZE/2, this.y + CELL_SIZE/2, false));
+                    // Spawn the energy battery in the bottom-right corner of the bot
+                    let spawnX = this.x + CELL_SIZE - 15;
+                    let spawnY = this.y + CELL_SIZE - 15;
+                    energyDrops.push(new Energy(spawnX, spawnY, false));
                 }
 
                 if (this.isBomb) {
