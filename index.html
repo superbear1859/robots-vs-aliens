@@ -31,6 +31,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh; /* Fallback for older browsers */
+            height: calc(var(--vh, 1vh) * 100); /* Safari exact visible height fix */
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(20, 10, 40, 0.4), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(10, 30, 40, 0.4), transparent 25%);
@@ -39,19 +41,14 @@
         #game-container {
             position: relative;
             width: 100%;
-            max-width: min(1100px, calc(95vh * 11 / 6));
+            /* Uses CSS variable updated by JS for exact Safari height mapping */
+            max-width: min(1100px, calc(95 * var(--vh, 1vh) * 11 / 6));
             aspect-ratio: 11 / 6;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
             border: 2px solid #1a2f4c;
             border-radius: 10px;
             overflow: hidden;
             background: linear-gradient(to bottom, #0f172a, #020617);
-        }
-
-        @supports (max-width: calc(95dvh * 11 / 6)) {
-            #game-container {
-                max-width: min(1100px, calc(95dvh * 11 / 6));
-            }
         }
 
         canvas {
@@ -279,27 +276,27 @@
 
         /* --- MOBILE LANDSCAPE TEXT FIX --- */
         /* Triggers when height is constrained (like turning phone sideways) */
-        /* Shrinks paddings/margins and ties text strictly to height (vh) to guarantee no cut-offs */
+        /* Shrinks paddings/margins and ties text strictly to var(--vh) to guarantee no cut-offs in Safari */
         @media (max-height: 600px) {
-            h1 { font-size: 8vh; margin-bottom: 2vh; }
-            p { font-size: 4.5vh; margin-bottom: 3vh; line-height: 1.2; }
-            button.main-btn { font-size: 4.5vh; padding: 2vh 4vh; }
-            .in-game-btn { font-size: 4vh; padding: 1.5vh 3vh; width: auto; }
-            #stats, #levelStats { font-size: 5vh; margin-bottom: 2vh; }
-            .button-group { gap: 2vh; }
+            h1 { font-size: calc(var(--vh, 1vh) * 8); margin-bottom: calc(var(--vh, 1vh) * 2); }
+            p { font-size: calc(var(--vh, 1vh) * 4.5); margin-bottom: calc(var(--vh, 1vh) * 3); line-height: 1.2; }
+            button.main-btn { font-size: calc(var(--vh, 1vh) * 4.5); padding: calc(var(--vh, 1vh) * 2) calc(var(--vh, 1vh) * 4); }
+            .in-game-btn { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5) calc(var(--vh, 1vh) * 3); width: auto; }
+            #stats, #levelStats { font-size: calc(var(--vh, 1vh) * 5); margin-bottom: calc(var(--vh, 1vh) * 2); }
+            .button-group { gap: calc(var(--vh, 1vh) * 2); }
 
             /* Manual adjustments */
-            #manualTitle { font-size: 7vh; margin-bottom: 2vh; }
-            #manualContent { max-height: 55vh; margin-bottom: 1vh; }
-            #closeManualBtn { margin-top: 2vh; }
-            .manual-section-title { font-size: 5vh; margin: 1vh 0 2vh 0; }
-            .text-red { margin-top: 2vh; }
-            .manual-grid { gap: 2vh; margin-bottom: 2vh; }
-            .manual-card { padding: 2vh; width: auto; flex: 1 1 200px; }
-            .manual-card h3 { font-size: 4.5vh; margin-bottom: 1vh; }
-            .manual-card h3 svg { width: 5vh; height: 5vh; }
-            .manual-card p { font-size: 3.5vh !important; margin: 0.5vh 0 !important; }
-            #fullscreenBtn svg { width: 3.5vh; height: 3.5vh; }
+            #manualTitle { font-size: calc(var(--vh, 1vh) * 7); margin-bottom: calc(var(--vh, 1vh) * 2); }
+            #manualContent { max-height: calc(var(--vh, 1vh) * 55); margin-bottom: calc(var(--vh, 1vh) * 1); }
+            #closeManualBtn { margin-top: calc(var(--vh, 1vh) * 2); }
+            .manual-section-title { font-size: calc(var(--vh, 1vh) * 5); margin: calc(var(--vh, 1vh) * 1) 0 calc(var(--vh, 1vh) * 2) 0; }
+            .text-red { margin-top: calc(var(--vh, 1vh) * 2); }
+            .manual-grid { gap: calc(var(--vh, 1vh) * 2); margin-bottom: calc(var(--vh, 1vh) * 2); }
+            .manual-card { padding: calc(var(--vh, 1vh) * 2); width: auto; flex: 1 1 200px; }
+            .manual-card h3 { font-size: calc(var(--vh, 1vh) * 4.5); margin-bottom: calc(var(--vh, 1vh) * 1); }
+            .manual-card h3 svg { width: calc(var(--vh, 1vh) * 5); height: calc(var(--vh, 1vh) * 5); }
+            .manual-card p { font-size: calc(var(--vh, 1vh) * 3.5) !important; margin: calc(var(--vh, 1vh) * 0.5) 0 !important; }
+            #fullscreenBtn svg { width: calc(var(--vh, 1vh) * 3.5); height: calc(var(--vh, 1vh) * 3.5); }
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -363,6 +360,16 @@
     </div>
 
     <script>
+        // --- Mobile Safari Viewport Height Fix ---
+        // Dynamically calculates the true innerHeight minus UI bars
+        function updateViewportHeight() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        window.addEventListener('resize', updateViewportHeight);
+        window.addEventListener('orientationchange', () => { setTimeout(updateViewportHeight, 100); });
+        updateViewportHeight(); // Call immediately on load
+
         // --- Game Speed Management ---
         let gameSpeed = 1;
 
