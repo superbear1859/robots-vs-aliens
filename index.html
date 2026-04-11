@@ -23,6 +23,8 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            height: 100dvh; /* Uses dynamic viewport height on mobile to dodge address bars */
+            margin: 0;
             overflow: hidden;
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(20, 10, 40, 0.4), transparent 25%),
@@ -32,13 +34,21 @@
         #game-container {
             position: relative;
             width: 100%;
-            max-width: 1100px;
+            /* Limit max width to either 1100px OR an amount that perfectly fits 95% of the screen height */
+            max-width: min(1100px, calc(95vh * 11 / 6));
             aspect-ratio: 11 / 6;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
             border: 2px solid #1a2f4c;
             border-radius: 10px;
             overflow: hidden;
             background: linear-gradient(to bottom, #0f172a, #020617);
+        }
+
+        /* Use dynamic viewport height if the browser supports it for perfect mobile scaling */
+        @supports (max-width: calc(95dvh * 11 / 6)) {
+            #game-container {
+                max-width: min(1100px, calc(95dvh * 11 / 6));
+            }
         }
 
         canvas {
