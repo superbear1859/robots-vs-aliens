@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Added maximum-scale and user-scalable=no to prevent zooming on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Robots vs Aliens</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
@@ -45,6 +46,9 @@
             width: 100%;
             height: 100%;
             cursor: crosshair;
+            /* Crucial for mobile: prevents the browser from trying to scroll when swiping on the canvas */
+            touch-action: none; 
+            -webkit-touch-callout: none;
         }
 
         .overlay {
@@ -475,7 +479,6 @@
             { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 }
         ];
 
-        // NEW 6-ALIEN ROSTER
         const alienConfigs = [
             { type: 'scout', hp: 100, speed: 0.25, damage: 0.5, color: '#a3e635', radius: 30, score: 10 },
             { type: 'brute', hp: 350, speed: 0.15, damage: 1.5, color: '#ef4444', radius: 40, score: 30 },
@@ -486,30 +489,48 @@
         ];
 
         let canvasRect = canvas.getBoundingClientRect();
-        window.addEventListener('resize', () => {
-            canvasRect = canvas.getBoundingClientRect();
+        
+        // Listeners for resizing and orientation
+        window.addEventListener('resize', () => { canvasRect = canvas.getBoundingClientRect(); });
+        window.addEventListener('scroll', () => { canvasRect = canvas.getBoundingClientRect(); });
+        window.addEventListener('orientationchange', () => { 
+            setTimeout(() => { canvasRect = canvas.getBoundingClientRect(); }, 100); 
         });
 
-        canvas.addEventListener('mousemove', (e) => {
+        // Maps raw browser coordinates to internal canvas resolution
+        function updateMousePos(clientX, clientY) {
             const scaleX = canvas.width / canvasRect.width;
             const scaleY = canvas.height / canvasRect.height;
-            mouse.x = (e.clientX - canvasRect.left) * scaleX;
-            mouse.y = (e.clientY - canvasRect.top) * scaleY;
-        });
+            mouse.x = (clientX - canvasRect.left) * scaleX;
+            mouse.y = (clientY - canvasRect.top) * scaleY;
+        }
 
-        canvas.addEventListener('mouseleave', () => {
-            mouse.x = undefined;
-            mouse.y = undefined;
-        });
+        // --- Desktop Mouse Events ---
+        canvas.addEventListener('mousemove', (e) => { updateMousePos(e.clientX, e.clientY); });
+        canvas.addEventListener('mouseleave', () => { mouse.x = undefined; mouse.y = undefined; });
+        canvas.addEventListener('mousedown', () => { mouse.clicked = true; });
+        canvas.addEventListener('mouseup', () => { mouse.clicked = false; });
 
-        canvas.addEventListener('mousedown', () => {
+        // --- Mobile Touch Events ---
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevents the browser from zooming/scrolling
+            updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
             mouse.clicked = true;
-        });
+        }, { passive: false });
 
-        canvas.addEventListener('mouseup', () => {
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Allows swiping for energy drops without scrolling page
+            updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
             mouse.clicked = false;
-        });
+            mouse.x = undefined; // Clears coordinate so ghost-cursor disappears
+            mouse.y = undefined;
+        }, { passive: false });
 
+        // UI Buttons
         speedBtn.addEventListener('click', () => {
             gameSpeed = gameSpeed < 4 ? gameSpeed + 1 : 1;
             speedBtn.innerText = `▶▶ ${gameSpeed}x Speed`;
@@ -809,7 +830,6 @@
                 const hpMultiplier = 1 + ((level - 1) * 0.05) + ((wave - 1) * 0.02);
                 const speedMultiplier = 1 + ((level - 1) * 0.01) + ((wave - 1) * 0.01);
 
-                // Spawn chances mapped by level unlock rules
                 let availableTypes = [0]; // scout
                 if (level >= 3) availableTypes.push(1); // brute
                 if (level >= 4) availableTypes.push(2); // runner
@@ -820,7 +840,6 @@
                 let typeIdx = 0;
                 let roll = Math.random();
                 
-                // Determine spawn type: newer enemies spawn a bit less often to prevent swarms of bosses
                 if (availableTypes.includes(5) && roll > 0.85) typeIdx = 5;
                 else if (availableTypes.includes(3) && roll > 0.75) typeIdx = 3;
                 else if (availableTypes.includes(4) && roll > 0.65) typeIdx = 4;
@@ -849,9 +868,8 @@
 
                 ctx.save();
                 
-                // Phantom specific drawing effect
                 if (this.type === 'phantom') {
-                    ctx.globalAlpha = 0.4 + Math.abs(Math.sin(this.frameX * 0.05)) * 0.6; // Pulses opacity
+                    ctx.globalAlpha = 0.4 + Math.abs(Math.sin(this.frameX * 0.05)) * 0.6;
                 }
 
                 ctx.shadowColor = this.color;
@@ -891,45 +909,39 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Kawaii Face Detail
                 ctx.shadowBlur = 0;
                 
-                // Blush
                 ctx.fillStyle = "rgba(255, 150, 180, 0.7)";
                 ctx.beginPath();
                 ctx.arc(cx - 14, cy + 2, 4, 0, Math.PI * 2);
                 ctx.arc(cx + 6, cy + 2, 4, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Sclera (White background of eyes)
                 ctx.fillStyle = "#fff";
                 ctx.beginPath();
                 ctx.arc(cx - 8, cy - 4, 6, 0, Math.PI * 2); 
                 ctx.arc(cx + 4, cy - 4, 6, 0, Math.PI * 2); 
                 ctx.fill();
 
-                // Pupils (Black, looking slightly forward)
                 ctx.fillStyle = "#020617";
                 ctx.beginPath();
                 ctx.arc(cx - 10, cy - 4, 3.5, 0, Math.PI * 2);
                 ctx.arc(cx + 2, cy - 4, 3.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Sparkle (White catchlight)
                 ctx.fillStyle = "#fff";
                 ctx.beginPath();
                 ctx.arc(cx - 11, cy - 5.5, 1.5, 0, Math.PI * 2);
                 ctx.arc(cx + 1, cy - 5.5, 1.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Cute Mouth (Tiny smile)
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(cx - 2, cy + 4, 3, 0, Math.PI, false);
                 ctx.stroke();
 
-                ctx.restore(); // Always restore alpha before drawing UI
+                ctx.restore(); 
 
                 ctx.fillStyle = "#cbd5e1";
                 ctx.font = "11px Orbitron";
@@ -1086,13 +1098,11 @@
             ctx.fillStyle = "#ef4444";
             ctx.fillText(`Level: ${level} | Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 15);
 
-            // Draw Cards - Resized slightly to fit all seamlessly
             let cardStartX = 150;
             let cardWidth = 85;
             let cardHeight = 85;
             let cardGap = 10;
 
-            // Unlock Order: Blaster(1) -> Battery(0) -> Bomb(4) -> Shield(2) -> Mine(5) -> Drill(6) -> Plasma(3)
             let availableCards = [];
             if (level >= 1) availableCards.push(cardTypes.find(c => c.id === 1)); 
             if (level >= 2) availableCards.push(cardTypes.find(c => c.id === 0)); 
@@ -1167,8 +1177,11 @@
                 ctx.font = "bold 13px Orbitron";
                 ctx.fillText(card.cost > 0 ? (card.cost + " ⚡") : "FREE", x + cardWidth/2, y + 75);
 
+                // Allows toggling off card by tapping it again (important for touch devices)
                 if (mouse.clicked && mouse.x > x && mouse.x < x + cardWidth && mouse.y > y && mouse.y < y + cardHeight) {
-                    if (canAfford && isReady) {
+                    if (selectedCardType === card.id) {
+                        selectedCardType = null; 
+                    } else if (canAfford && isReady) {
                         selectedCardType = card.id;
                     }
                     mouse.clicked = false; 
@@ -1216,7 +1229,7 @@
                         defenders.splice(defenderIndex, 1);
                         card.currentCooldown = card.cooldown; 
                         selectedCardType = null; 
-                        SoundEngine.drill(); // Play digging sound
+                        SoundEngine.drill(); 
                     }
                     mouse.clicked = false; 
                 } else { // Normal Bot Placement
@@ -1294,7 +1307,7 @@
                         
                         attackers[j].health -= projectiles[i].damage;
                         projHit = true;
-                        SoundEngine.alienHit(); // Play the new distinct hit-marker sound
+                        SoundEngine.alienHit(); 
 
                         ctx.fillStyle = "white";
                         ctx.beginPath();
@@ -1320,9 +1333,8 @@
                     let defender = defenders[j];
                     if (collision(attacker, defender)) {
                         
-                        // Check if the defender is an ARMED Mine Bot
                         if (defender.isMine && defender.armed) {
-                            defender.explode(1.0); // Small radius, just current square
+                            defender.explode(1.0); 
                             defender.health = 0; 
                             isAttacking = false;
                         } else {
@@ -1368,7 +1380,8 @@
                     let dy = mouse.y - energyDrops[i].y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
 
-                    if (distance < energyDrops[i].radius * 2) {
+                    // Radius multiplied by 3 for much easier touch swiping
+                    if (distance < energyDrops[i].radius * 3) {
                         energy += energyDrops[i].amount;
                         floatingTexts.push(new FloatingText(energyDrops[i].x, energyDrops[i].y, `+${energyDrops[i].amount} ⚡`, "250, 204, 21"));
                         energyDrops.splice(i, 1);
@@ -1420,7 +1433,6 @@
 
             let html = '<h2 style="color:#38bdf8; margin: 10px 0 20px 0; text-shadow: 0 0 10px #38bdf8;">Unlocked Tech</h2><div class="manual-grid">';
             
-            // Collect unlocked bots based on the NEW level the player is about to face
             let unlockedBots = [];
             if (level >= 1) unlockedBots.push(cardTypes.find(c => c.id === 1)); 
             if (level >= 2) unlockedBots.push(cardTypes.find(c => c.id === 0)); 
@@ -1456,7 +1468,6 @@
                 let desc = "";
                 let svgIcon = "";
 
-                // Reusable SVG string for the Kawaii face
                 const faceSVG = `
                     <circle cx="16" cy="32" r="4" fill="rgba(255, 150, 180, 0.7)"/>
                     <circle cx="36" cy="32" r="4" fill="rgba(255, 150, 180, 0.7)"/>
@@ -1507,12 +1518,12 @@
             if (selectedCardType !== null && mouse.x !== undefined && mouse.y !== undefined) {
                 let card = cardTypes.find(c => c.id === selectedCardType);
                 ctx.save();
-                ctx.globalAlpha = 0.5; // Make it semi-transparent
+                ctx.globalAlpha = 0.5; 
                 ctx.font = "40px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.translate(mouse.x, mouse.y);
-                if (card.id === 1) ctx.scale(-1, 1); // Flip blaster icon
+                if (card.id === 1) ctx.scale(-1, 1); 
                 ctx.fillText(card.symbol, 0, 0);
                 ctx.restore();
             }
@@ -1536,7 +1547,7 @@
                 manageEnergyDrops();
                 drawTopBar();
                 manageFloatingTexts();
-                drawCursorPreview(); // Draw the ghost item holding on cursor!
+                drawCursorPreview(); 
                 updateLevelProgress();
 
                 frame++;
