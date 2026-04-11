@@ -1764,7 +1764,6 @@
 
         function startGame() {
             SoundEngine.init(); 
-            SoundEngine.startBGM(1); 
 
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
@@ -1774,18 +1773,19 @@
             level = 1; 
             score = 0;
             initLevel();
+            SoundEngine.startBGM(1); // Start music AFTER the speed has been reset
             gameRunning = true;
             animate();
         }
 
         function startNextLevel() {
             SoundEngine.init();
-            SoundEngine.startBGM(level);
 
             levelCompleteScreen.classList.add('hidden');
             speedBtn.classList.remove('hidden-btn'); 
             
             initLevel();
+            SoundEngine.startBGM(level); // Start music AFTER the speed has been reset
             gameRunning = true;
             animate();
         }
