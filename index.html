@@ -384,6 +384,7 @@
             #passcodeInput { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #passcodeError { font-size: calc(var(--vh, 1vh) * 3); height: calc(var(--vh, 1vh) * 3); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #skipBtn { bottom: calc(var(--vh, 1vh) * 10) !important; }
+            #addScoreBtn { bottom: calc(var(--vh, 1vh) * 18) !important; }
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -415,6 +416,7 @@
         </button>
         <button id="speedBtn" class="in-game-btn hidden-btn">▶▶ 1x Speed</button>
         <button id="skipBtn" class="in-game-btn hidden-btn" style="bottom: 70px;">Skip Level</button>
+        <button id="addScoreBtn" class="in-game-btn hidden-btn" style="bottom: 130px;">Earn 2000 Pts</button>
         
         <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
             <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
@@ -464,8 +466,8 @@
         </div>
 
         <div id="passcodeScreen" class="overlay hidden" style="z-index: 50;">
-            <h1 style="font-size: 3vw; margin-bottom: 10px;">Admin Override</h1>
-            <p>Enter passcode to bypass this sector.</p>
+            <h1 id="passcodeTitle" style="font-size: 3vw; margin-bottom: 10px;">Admin Override</h1>
+            <p id="passcodeDesc">Enter passcode to bypass this sector.</p>
             <input type="text" id="passcodeInput" placeholder="Enter Passcode" autocomplete="off" spellcheck="false">
             <div id="passcodeError"></div>
             <div class="button-group">
@@ -644,6 +646,7 @@
         const manualScreen = document.getElementById('manualScreen');
         const speedBtn = document.getElementById('speedBtn');
         const skipBtn = document.getElementById('skipBtn');
+        const addScoreBtn = document.getElementById('addScoreBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const fsIconEnter = document.getElementById('fsIconEnter');
         const fsIconExit = document.getElementById('fsIconExit');
@@ -2184,6 +2187,7 @@
                 currentLoadout = pickableBots.map(b => b.id);
                 speedBtn.classList.remove('hidden-btn'); 
                 skipBtn.classList.remove('hidden-btn'); 
+                addScoreBtn.classList.remove('hidden-btn');
                 
                 initLevel();
                 SoundEngine.startBGM(level);
@@ -2316,6 +2320,7 @@
             cancelAnimationFrame(animationId);
             speedBtn.classList.add('hidden-btn'); 
             skipBtn.classList.add('hidden-btn'); 
+            addScoreBtn.classList.add('hidden-btn');
             SoundEngine.levelComplete(); 
             document.getElementById('levelStats').innerText = `Score: ${score}`;
             level++;
@@ -2327,6 +2332,7 @@
             cancelAnimationFrame(animationId);
             speedBtn.classList.add('hidden-btn'); 
             skipBtn.classList.add('hidden-btn'); 
+            addScoreBtn.classList.add('hidden-btn');
             SoundEngine.gameOverTone(); 
             statsEl.innerText = `Current Score: ${score} | Level: ${level}`;
             gameOverScreen.classList.remove('hidden');
@@ -2368,6 +2374,7 @@
             document.getElementById('loadoutScreen').classList.add('hidden');
             speedBtn.classList.remove('hidden-btn'); 
             skipBtn.classList.remove('hidden-btn'); 
+            addScoreBtn.classList.remove('hidden-btn');
             
             initLevel();
             SoundEngine.startBGM(level);
@@ -2375,9 +2382,25 @@
             animate();
         });
 
-        // --- Skip Level Logic ---
+        // --- Passcode Logic ---
+        let passcodeAction = '';
+
         skipBtn.addEventListener('click', () => {
             gameRunning = false; // Pause the game
+            passcodeAction = 'skip';
+            document.getElementById('passcodeTitle').innerText = 'Admin Override';
+            document.getElementById('passcodeDesc').innerText = 'Enter passcode to bypass this sector.';
+            document.getElementById('passcodeScreen').classList.remove('hidden');
+            document.getElementById('passcodeInput').value = '';
+            document.getElementById('passcodeError').innerText = '';
+            document.getElementById('passcodeInput').focus();
+        });
+
+        addScoreBtn.addEventListener('click', () => {
+            gameRunning = false; // Pause the game
+            passcodeAction = 'score';
+            document.getElementById('passcodeTitle').innerText = 'Score Inject';
+            document.getElementById('passcodeDesc').innerText = 'Enter passcode to earn 2000 points.';
             document.getElementById('passcodeScreen').classList.remove('hidden');
             document.getElementById('passcodeInput').value = '';
             document.getElementById('passcodeError').innerText = '';
@@ -2392,11 +2415,26 @@
 
         document.getElementById('submitPasscodeBtn').addEventListener('click', () => {
             const input = document.getElementById('passcodeInput').value;
-            if (input === "superbear1859yyyyy") {
-                document.getElementById('passcodeScreen').classList.add('hidden');
-                completeLevel(); // Triggers the level complete sequence instantly
-            } else {
-                document.getElementById('passcodeError').innerText = 'Access Denied: Invalid Passcode';
+            
+            if (passcodeAction === 'skip') {
+                if (input === "superbear1859yyyyy") {
+                    document.getElementById('passcodeScreen').classList.add('hidden');
+                    completeLevel(); // Triggers the level complete sequence instantly
+                } else {
+                    document.getElementById('passcodeError').innerText = 'Access Denied: Invalid Passcode';
+                }
+            } else if (passcodeAction === 'score') {
+                if (input === "67super1859") {
+                    document.getElementById('passcodeScreen').classList.add('hidden');
+                    score += 2000;
+                    levelStartScore += 2000; // Track it so a "Retry" doesn't wipe these points
+                    floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `+2000 PTS`, "250, 204, 21"));
+                    SoundEngine.energy(); 
+                    gameRunning = true;
+                    animate(); // Resume the game with points injected
+                } else {
+                    document.getElementById('passcodeError').innerText = 'Access Denied: Invalid Passcode';
+                }
             }
         });
 
