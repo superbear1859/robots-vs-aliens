@@ -972,33 +972,36 @@
 
                 // Unique flat drawing for Spike Bots and Mega Spikes
                 if (this.isSpike) {
+                    // Draw base rectangle pad
                     ctx.beginPath();
-                    ctx.roundRect(drawX, drawY + this.height - 20, this.width, 20, 5);
+                    ctx.roundRect(drawX, drawY + this.height - 15, this.width, 15, 2);
                     ctx.fill();
                     ctx.stroke();
 
                     // Calculate animation extension (pops up every 3 seconds)
                     let cycle = this.timer % 180;
                     let extension = 0;
-                    if (cycle < 15) extension = cycle / 15; // Extending up
-                    else if (cycle < 45) extension = 1; // Fully extended
-                    else if (cycle < 60) extension = 1 - ((cycle - 45) / 15); // Retracting down
+                    if (cycle < 10) extension = cycle / 10; // Pop up fast
+                    else if (cycle < 50) extension = 1; // Hold extended
+                    else if (cycle < 60) extension = 1 - ((cycle - 50) / 10); // Retract quickly
 
-                    // Draw physical spikes sticking up from the ground
+                    // Draw filled physical spikes shooting up from the rectangle
                     if (extension > 0) {
                         ctx.beginPath();
                         let numSpikes = this.isMegaSpike ? 5 : 4;
-                        let baseSpikeH = this.isMegaSpike ? 35 : 20;
+                        let baseSpikeH = this.isMegaSpike ? 40 : 25;
                         let spikeH = baseSpikeH * extension;
-                        let startOffset = this.isMegaSpike ? 10 : 16;
-                        let spacing = this.isMegaSpike ? 14 : 16;
+                        let startOffset = this.isMegaSpike ? 15 : 20;
+                        let spacing = (this.width - startOffset * 2) / (numSpikes - 1);
                         
                         for(let s=0; s < numSpikes; s++) {
                             let sx = drawX + startOffset + s * spacing;
-                            ctx.moveTo(sx, drawY + this.height - 20);
-                            ctx.lineTo(sx + 6, drawY + this.height - 20 - spikeH);
-                            ctx.lineTo(sx + 12, drawY + this.height - 20);
+                            ctx.moveTo(sx - 5, drawY + this.height - 15);
+                            ctx.lineTo(sx, drawY + this.height - 15 - spikeH);
+                            ctx.lineTo(sx + 5, drawY + this.height - 15);
                         }
+                        ctx.fillStyle = this.card.color;
+                        ctx.fill();
                         ctx.stroke();
                     }
                     
@@ -1007,7 +1010,7 @@
                     ctx.font = "16px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillText(this.card.symbol, cx, drawY + this.height - 10);
+                    ctx.fillText(this.card.symbol, cx, drawY + this.height - 7);
                 } else {
                     // Normal Bot Drawing
                     ctx.beginPath();
@@ -1647,8 +1650,8 @@
                             // Aliens DO NOT stop to eat the spike. They walk over it.
                             if (defender.isSpikesExtended()) {
                                 // Drastically lowered damage output since it's now a timing trap
-                                let dmgToAlien = defender.isMegaSpike ? 1.5 : 0.5;
-                                let dmgToSpike = defender.isMegaSpike ? 0.05 : 0.1;
+                                let dmgToAlien = defender.isMegaSpike ? 0.6 : 0.2;
+                                let dmgToSpike = defender.isMegaSpike ? 0.02 : 0.05;
                                 attacker.health -= dmgToAlien; 
                                 defender.health -= dmgToSpike; 
                                 if (frame % 30 === 0) SoundEngine.hit();
