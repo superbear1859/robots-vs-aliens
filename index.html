@@ -355,6 +355,8 @@
             .loadout-card span:nth-child(2) { font-size: calc(var(--vh, 1vh) * 1.8) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
             .loadout-card span:nth-child(3) { font-size: calc(var(--vh, 1vh) * 2) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
             #confirmLoadoutBtn { margin-top: calc(var(--vh, 1vh) * 1) !important; padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2); font-size: calc(var(--vh, 1vh) * 3); }
+            
+            #splashText { font-size: calc(var(--vh, 1vh) * 6) !important; }
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -363,6 +365,7 @@
             button.main-btn { font-size: 4vw; padding: 10px 25px;}
             .in-game-btn { font-size: 3vw; padding: 8px 15px; width: 140px;}
             #stats, #levelStats { font-size: 4vw; }
+            #splashText { font-size: 5vw !important; }
         }
     </style>
 </head>
@@ -385,7 +388,11 @@
         </button>
         <button id="speedBtn" class="in-game-btn hidden-btn">▶▶ 1x Speed</button>
         
-        <div id="startScreen" class="overlay">
+        <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
+            <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
+        </div>
+
+        <div id="startScreen" class="overlay hidden">
             <h1>Robots <span style="color:#fff; text-shadow:none; font-size: 0.6em;">VS</span> <span class="text-alien">Aliens</span></h1>
             <p>Deploy robots to defend your base from the alien swarm! <br>Collect energy cells to build more defenses. Different robots have different abilities.</p>
             <button id="startBtn" class="main-btn">Initialize Defense</button>
@@ -395,7 +402,7 @@
             <h1 style="color: #ef4444; text-shadow: 0 0 20px #dc2626;">Base Overrun</h1>
             <div id="stats">Score: 0 | Wave: 1</div>
             <p>The alien swarm breached your defenses.</p>
-            <button id="restartBtn" class="main-btn">Reboot System</button>
+            <button id="restartBtn" class="main-btn">Retry Level</button>
         </div>
 
         <div id="levelCompleteScreen" class="overlay hidden">
@@ -615,6 +622,7 @@
         let currentFramesLimit = 1800;
         let frame = 0;
         let score = 0;
+        let levelStartScore = 0; // Tracks score at the beginning of a level
         let wave = 1;
         let energy = 200;
         let gameOver = false;
@@ -643,7 +651,6 @@
 
         let selectedCardType = null;
 
-        // Added Spike Bot (ID 7) and Mega Spike (ID 8)
         const cardTypes = [
             { id: 0, name: "Battery Bot", cost: 50, color: "#facc15", symbol: "⚡", desc: "Generates Energy", hp: 100, fireRate: 0, cooldown: 450, currentCooldown: 0 },
             { id: 1, name: "Blaster Bot", cost: 100, color: "#38bdf8", symbol: "🔫", desc: "Basic Attack", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
@@ -655,7 +662,8 @@
             { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "📌", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
             { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "📍", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 9, name: "Double Bot", cost: 200, color: "#0ea5e9", symbol: "♊", desc: "Fires two shots", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
-            { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 }
+            { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 },
+            { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1025,18 +1033,52 @@
                     ctx.fill();
                     ctx.stroke();
 
+                    // Draw an extra glowing forcefield around the Mega Shield
+                    if (this.card.id === 11) {
+                        ctx.save();
+                        ctx.strokeStyle = "rgba(96, 165, 250, 0.6)";
+                        ctx.lineWidth = 4;
+                        ctx.shadowColor = "#60a5fa";
+                        ctx.shadowBlur = 15;
+                        ctx.beginPath();
+                        ctx.roundRect(drawX - 6, drawY - 6, this.width + 12, this.height + 12, 14);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
                     ctx.shadowBlur = 0;
 
                     ctx.save();
                     ctx.translate(cx, cy);
-                    if (this.card.id === 1) {
+                    
+                    if (this.card.id === 9) { // Custom Double Bot Graphic (Two Guns Stacked)
                         ctx.scale(-1, 1); 
+                        ctx.fillStyle = this.card.color;
+                        ctx.font = "22px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText("🔫", 0, -10);
+                        ctx.fillText("🔫", 0, 12);
+                    } else if (this.card.id === 10) { // Custom Triple Bot Graphic (Three Guns Stacked)
+                        ctx.scale(-1, 1); 
+                        ctx.fillStyle = this.card.color;
+                        ctx.font = "18px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText("🔫", 0, -16);
+                        ctx.fillText("🔫", 0, 0);
+                        ctx.fillText("🔫", 0, 16);
+                    } else { // Standard Graphic behavior
+                        if (this.card.id === 1) {
+                            ctx.scale(-1, 1); 
+                        }
+                        ctx.fillStyle = this.card.color;
+                        ctx.font = "30px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(this.card.symbol, 0, 0);
                     }
-                    ctx.fillStyle = this.card.color;
-                    ctx.font = "30px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(this.card.symbol, 0, 0);
+                    
                     ctx.restore();
                 }
 
@@ -1104,9 +1146,9 @@
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
-                            // Spawn two projectiles slightly spaced apart for visual distinction
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE - 25, this.y + CELL_SIZE / 2, isPlasma));
+                            // Spawn two projectiles vertically aligned with the barrels of the two guns
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma));
                             shotFired = true;
                         }
                     } else {
@@ -1611,6 +1653,18 @@
                         }
                         mouse.clicked = false; 
                         mouse.dropped = false;
+                    } else if (selectedCardType === 11) { // Mega Shield Upgrade interaction
+                        if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 2) { // Must be placed on normal Shield
+                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                                defenders[defenderIndex] = new Defender(gridX, gridY, card);
+                                energy -= card.cost;
+                                card.currentCooldown = card.cooldown; 
+                                selectedCardType = null; 
+                                SoundEngine.place(); 
+                            }
+                        }
+                        mouse.clicked = false; 
+                        mouse.dropped = false;
                     } else { // Normal Bot Placement
                         if (defenderIndex === -1) {
                             if (energy >= card.cost && card.currentCooldown <= 0) {
@@ -1839,6 +1893,7 @@
             if (level >= 9) unlockedBots.push(cardTypes.find(c => c.id === 8)); // Mega Spike
             if (level >= 10) unlockedBots.push(cardTypes.find(c => c.id === 9)); // Double Bot
             if (level >= 11) unlockedBots.push(cardTypes.find(c => c.id === 10)); // Triple Bot
+            if (level >= 12) unlockedBots.push(cardTypes.find(c => c.id === 11)); // Mega Shield
             
             unlockedBots.forEach(bot => {
                 html += `
@@ -1929,12 +1984,27 @@
                 let card = cardTypes.find(c => c.id === selectedCardType);
                 ctx.save();
                 ctx.globalAlpha = 0.5; 
-                ctx.font = "40px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.translate(mouse.x, mouse.y);
-                if (card.id === 1) ctx.scale(-1, 1); 
-                ctx.fillText(card.symbol, 0, 0);
+                
+                if (card.id === 9) { // Custom Double Bot Graphic
+                    ctx.scale(-1, 1);
+                    ctx.font = "28px Arial"; 
+                    ctx.fillText("🔫", 0, -12);
+                    ctx.fillText("🔫", 0, 15);
+                } else if (card.id === 10) { // Custom Triple Bot Graphic
+                    ctx.scale(-1, 1);
+                    ctx.font = "24px Arial"; 
+                    ctx.fillText("🔫", 0, -20);
+                    ctx.fillText("🔫", 0, 0);
+                    ctx.fillText("🔫", 0, 20);
+                } else {
+                    ctx.font = "40px Arial";
+                    if (card.id === 1) ctx.scale(-1, 1); 
+                    ctx.fillText(card.symbol, 0, 0);
+                }
+                
                 ctx.restore();
             }
         }
@@ -2029,6 +2099,7 @@
             if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8));
             if (level >= 10) pickableBots.push(cardTypes.find(c => c.id === 9));
             if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
+            if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11)); // Add Mega Shield to pool
 
             if (pickableBots.length <= 6) {
                 // Automatically equip all bots and skip the loadout screen
@@ -2070,6 +2141,7 @@
             if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8));
             if (level >= 10) pickableBots.push(cardTypes.find(c => c.id === 9));
             if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
+            if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
 
             // Render top 6 slots
             for(let i = 0; i < 6; i++) {
@@ -2153,7 +2225,7 @@
             cancelAnimationFrame(animationId);
             speedBtn.classList.add('hidden-btn'); 
             SoundEngine.gameOverTone(); 
-            statsEl.innerText = `Final Score: ${score} | Reached Level: ${level}`;
+            statsEl.innerText = `Current Score: ${score} | Level: ${level}`;
             gameOverScreen.classList.remove('hidden');
         }
 
@@ -2161,18 +2233,20 @@
             SoundEngine.init(); 
             level = 1; 
             score = 0;
+            levelStartScore = 0;
             openLoadoutScreen();
         });
 
         restartBtn.addEventListener('click', () => {
             SoundEngine.init(); 
-            level = 1; 
-            score = 0;
+            // Restart the level by keeping the level variable the same, but reverting the score
+            score = levelStartScore; 
             openLoadoutScreen();
         });
 
         nextLevelBtn.addEventListener('click', () => {
             SoundEngine.init();
+            levelStartScore = score; // Save current score as the new baseline for the next level
             openLoadoutScreen();
         });
 
@@ -2190,6 +2264,29 @@
         createGrid();
         drawGrid();
         drawTopBar();
+
+        // --- Splash Screen Sequence ---
+        window.addEventListener('load', () => {
+            const splashScreen = document.getElementById('splashScreen');
+            const startScreen = document.getElementById('startScreen');
+            const splashText = document.getElementById('splashText');
+
+            // 1. Fade in "Superbear Presents" text smoothly after a short delay
+            setTimeout(() => {
+                if (splashText) splashText.style.opacity = 1;
+            }, 300);
+
+            // 2. Wait 2.8 seconds, then fade out the whole splash screen
+            setTimeout(() => {
+                splashScreen.classList.add('hidden');
+                
+                // 3. Show the start screen halfway through the fade out for a smooth transition
+                setTimeout(() => {
+                    startScreen.classList.remove('hidden');
+                }, 500); 
+                
+            }, 2800);
+        });
 
     </script>
 </body>
