@@ -910,6 +910,13 @@
                 this.armed = false; 
             }
 
+            isSpikesExtended() {
+                if (!this.isSpike) return false;
+                // 180 frames = exactly 3 seconds at 60fps. Active for the first 60 frames (1 second).
+                let cycle = this.timer % 180;
+                return cycle > 0 && cycle < 60;
+            }
+
             explode(radiusMultiplier) {
                 SoundEngine.explosion();
                 let cx = this.x + CELL_SIZE / 2;
@@ -970,20 +977,30 @@
                     ctx.fill();
                     ctx.stroke();
 
+                    // Calculate animation extension (pops up every 3 seconds)
+                    let cycle = this.timer % 180;
+                    let extension = 0;
+                    if (cycle < 15) extension = cycle / 15; // Extending up
+                    else if (cycle < 45) extension = 1; // Fully extended
+                    else if (cycle < 60) extension = 1 - ((cycle - 45) / 15); // Retracting down
+
                     // Draw physical spikes sticking up from the ground
-                    ctx.beginPath();
-                    let numSpikes = this.isMegaSpike ? 5 : 4;
-                    let spikeH = this.isMegaSpike ? 35 : 20;
-                    let startOffset = this.isMegaSpike ? 10 : 16;
-                    let spacing = this.isMegaSpike ? 14 : 16;
-                    
-                    for(let s=0; s < numSpikes; s++) {
-                        let sx = drawX + startOffset + s * spacing;
-                        ctx.moveTo(sx, drawY + this.height - 20);
-                        ctx.lineTo(sx + 6, drawY + this.height - 20 - spikeH);
-                        ctx.lineTo(sx + 12, drawY + this.height - 20);
+                    if (extension > 0) {
+                        ctx.beginPath();
+                        let numSpikes = this.isMegaSpike ? 5 : 4;
+                        let baseSpikeH = this.isMegaSpike ? 35 : 20;
+                        let spikeH = baseSpikeH * extension;
+                        let startOffset = this.isMegaSpike ? 10 : 16;
+                        let spacing = this.isMegaSpike ? 14 : 16;
+                        
+                        for(let s=0; s < numSpikes; s++) {
+                            let sx = drawX + startOffset + s * spacing;
+                            ctx.moveTo(sx, drawY + this.height - 20);
+                            ctx.lineTo(sx + 6, drawY + this.height - 20 - spikeH);
+                            ctx.lineTo(sx + 12, drawY + this.height - 20);
+                        }
+                        ctx.stroke();
                     }
-                    ctx.stroke();
                     
                     ctx.shadowBlur = 0;
                     ctx.fillStyle = this.card.color;
@@ -1627,12 +1644,15 @@
                             defender.health = 0; 
                             isAttacking = false;
                         } else if (defender.isSpike) {
-                            // Aliens DO NOT stop to eat the spike. They walk over it and bleed health continuously.
-                            let dmgToAlien = defender.isMegaSpike ? 2.5 : 1.0;
-                            let dmgToSpike = defender.isMegaSpike ? 0.08 : 0.15;
-                            attacker.health -= dmgToAlien; 
-                            defender.health -= dmgToSpike; 
-                            if (frame % 30 === 0) SoundEngine.hit();
+                            // Aliens DO NOT stop to eat the spike. They walk over it.
+                            if (defender.isSpikesExtended()) {
+                                // Drastically lowered damage output since it's now a timing trap
+                                let dmgToAlien = defender.isMegaSpike ? 1.5 : 0.5;
+                                let dmgToSpike = defender.isMegaSpike ? 0.05 : 0.1;
+                                attacker.health -= dmgToAlien; 
+                                defender.health -= dmgToSpike; 
+                                if (frame % 30 === 0) SoundEngine.hit();
+                            }
                         } else {
                             defender.health -= attacker.damage;
                             isAttacking = true;
