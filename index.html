@@ -1491,6 +1491,18 @@
             }
         }
 
+        // Helper function to build HTML icons for the menus
+        function getBotSymbolHTML(bot, isManual = false) {
+            let baseSize = isManual ? 28 : 26;
+            if (bot.id === 9) { // Double Bot stacked guns
+                return `<div style="display: inline-flex; flex-direction: column; line-height: 0.9; font-size: ${baseSize * 0.65}px; transform: scale(-1, 1); vertical-align: middle;"><span>🔫</span><span>🔫</span></div>`;
+            } else if (bot.id === 10) { // Triple Bot stacked guns
+                return `<div style="display: inline-flex; flex-direction: column; line-height: 0.8; font-size: ${baseSize * 0.55}px; transform: scale(-1, 1); vertical-align: middle;"><span>🔫</span><span>🔫</span><span>🔫</span></div>`;
+            }
+            // Standard symbol
+            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
+        }
+
         function drawTopBar() {
             ctx.fillStyle = "#0f172a";
             ctx.fillRect(0, 0, CANVAS_WIDTH, TOP_BAR_HEIGHT);
@@ -1567,12 +1579,33 @@
 
                 ctx.save();
                 ctx.translate(x + cardWidth/2, y + 45);
-                if (card.id === 1) ctx.scale(-1, 1); 
-                ctx.fillStyle = card.color;
-                ctx.font = "26px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(card.symbol, 0, 0);
+                
+                if (card.id === 9) { // Double Bot Graphic
+                    ctx.scale(-1, 1); 
+                    ctx.fillStyle = card.color;
+                    ctx.font = "20px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("🔫", 0, -8);
+                    ctx.fillText("🔫", 0, 10);
+                } else if (card.id === 10) { // Triple Bot Graphic
+                    ctx.scale(-1, 1); 
+                    ctx.fillStyle = card.color;
+                    ctx.font = "16px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("🔫", 0, -14);
+                    ctx.fillText("🔫", 0, 0);
+                    ctx.fillText("🔫", 0, 14);
+                } else { // Standard Graphic
+                    if (card.id === 1) ctx.scale(-1, 1); 
+                    ctx.fillStyle = card.color;
+                    ctx.font = "26px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(card.symbol, 0, 0);
+                }
+                
                 ctx.restore();
 
                 if (!isReady) {
@@ -1905,7 +1938,7 @@
             unlockedBots.forEach(bot => {
                 html += `
                     <div class="manual-card" style="border-color: ${bot.color}">
-                        <h3><span style="font-size: 28px;">${bot.symbol}</span> ${bot.name}</h3>
+                        <h3><span style="color:${bot.color}">${getBotSymbolHTML(bot, true)}</span> <span style="margin-left: 5px; color:#fff">${bot.name}</span></h3>
                         <p><strong>Cost:</strong> ${bot.cost > 0 ? bot.cost + ' ⚡' : 'Free'}</p>
                         <p><strong>Recharge:</strong> ${(bot.cooldown / 60).toFixed(1)}s</p>
                         <p><strong>Role:</strong> ${bot.desc}</p>
@@ -2180,7 +2213,9 @@
                     slotDiv.style.background = '#1e293b';
                     
                     slotDiv.innerHTML = `
-                        <span style="color:${bot.color}; font-size:26px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block;">${bot.symbol}</span>
+                        <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
+                            ${getBotSymbolHTML(bot)}
+                        </div>
                         <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
                         <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
                     `;
@@ -2206,7 +2241,9 @@
                 cardDiv.style.background = '#1e293b';
                 
                 cardDiv.innerHTML = `
-                    <span style="color:${bot.color}; font-size:26px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block;">${bot.symbol}</span>
+                    <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
+                        ${getBotSymbolHTML(bot)}
+                    </div>
                     <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
                     <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
                 `;
