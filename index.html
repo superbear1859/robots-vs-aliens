@@ -278,6 +278,7 @@
             gap: 10px;
             margin-bottom: 10px;
             justify-content: center;
+            flex-wrap: wrap; /* Ensures the 7th slot fits nicely on small screens */
         }
         
         .loadout-pool {
@@ -354,7 +355,8 @@
             .loadout-card span:nth-child(1) { font-size: calc(var(--vh, 1vh) * 4) !important; }
             .loadout-card span:nth-child(2) { font-size: calc(var(--vh, 1vh) * 1.8) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
             .loadout-card span:nth-child(3) { font-size: calc(var(--vh, 1vh) * 2) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
-            #confirmLoadoutBtn { margin-top: calc(var(--vh, 1vh) * 1) !important; padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2); font-size: calc(var(--vh, 1vh) * 3); }
+            #confirmLoadoutBtn { margin-top: 0 !important; padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2); font-size: calc(var(--vh, 1vh) * 3); }
+            #buySlotBtn { padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2); font-size: calc(var(--vh, 1vh) * 2.5) !important; }
             
             #splashText { font-size: calc(var(--vh, 1vh) * 6) !important; }
         }
@@ -425,11 +427,14 @@
 
         <div id="loadoutScreen" class="overlay hidden">
             <h1 style="font-size: 3vw; margin-bottom: 10px;">Select Loadout</h1>
-            <p style="margin-bottom: 10px;">Choose up to 6 bots for this sector.</p>
+            <p id="loadoutSubtitle" style="margin-bottom: 10px;">Choose up to 6 bots for this sector.</p>
             <div id="selectedSlots" class="loadout-slots"></div>
             <p id="drillNote" style="font-size: 1vw; color: #94a3b8; margin-bottom: 15px; display: none;">(The Drill Tool is automatically equipped)</p>
             <div id="availablePool" class="loadout-pool"></div>
-            <button id="confirmLoadoutBtn" class="main-btn" style="margin-top: 20px;">Initialize Defense</button>
+            <div class="button-group" style="margin-top: 20px; align-items: center;">
+                <button id="confirmLoadoutBtn" class="main-btn" style="margin-top: 0;">Initialize Defense</button>
+                <button id="buySlotBtn" class="main-btn" style="background: linear-gradient(45deg, #a855f7, #d946ef); font-size: 1.2vw; padding: 10px 20px; display: none; margin-top: 0;">Unlock 7th Slot (2000 Score)</button>
+            </div>
         </div>
     </div>
 
@@ -630,7 +635,9 @@
         let animationId;
         let nextAlienSpawnTime = 0;
 
-        let currentLoadout = []; // Tracks which 6 bots you chose for this level
+        let maxSlots = 6;
+        let extraSlotPurchased = false;
+        let currentLoadout = []; // Tracks which bots you chose for this level
 
         let grid = [];
         let defenders = [];
@@ -2101,7 +2108,7 @@
             if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11)); // Add Mega Shield to pool
 
-            if (pickableBots.length <= 6) {
+            if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
                 currentLoadout = pickableBots.map(b => b.id);
                 speedBtn.classList.remove('hidden-btn'); 
@@ -2111,11 +2118,11 @@
                 gameRunning = true;
                 animate();
             } else {
-                // Show the loadout screen if the player has more than 6 bots to choose from
+                // Show the loadout screen if the player has more bots than slots
                 document.getElementById('loadoutScreen').classList.remove('hidden');
                 
                 // Auto-fills slots initially to save player time
-                currentLoadout = pickableBots.slice(0, 6).map(b => b.id);
+                currentLoadout = pickableBots.slice(0, maxSlots).map(b => b.id);
                 renderLoadout();
             }
         }
@@ -2125,10 +2132,28 @@
             const poolContainer = document.getElementById('availablePool');
             const confirmBtn = document.getElementById('confirmLoadoutBtn');
             const drillNote = document.getElementById('drillNote');
+            const buySlotBtn = document.getElementById('buySlotBtn');
 
+            document.getElementById('loadoutSubtitle').innerText = `Choose up to ${maxSlots} bots for this sector.`;
             drillNote.style.display = level >= 6 ? 'block' : 'none';
             slotsContainer.innerHTML = '';
             poolContainer.innerHTML = '';
+
+            // Handle Extra Slot Button logic
+            if (level >= 12 && !extraSlotPurchased) {
+                buySlotBtn.style.display = 'block';
+                if (score >= 2000) {
+                    buySlotBtn.style.opacity = 1;
+                    buySlotBtn.style.cursor = 'pointer';
+                    buySlotBtn.disabled = false;
+                } else {
+                    buySlotBtn.style.opacity = 0.5;
+                    buySlotBtn.style.cursor = 'not-allowed';
+                    buySlotBtn.disabled = true;
+                }
+            } else {
+                buySlotBtn.style.display = 'none';
+            }
 
             let pickableBots = [];
             if (level >= 1) pickableBots.push(cardTypes.find(c => c.id === 1)); 
@@ -2143,8 +2168,8 @@
             if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
 
-            // Render top 6 slots
-            for(let i = 0; i < 6; i++) {
+            // Render top slots dynamically based on maxSlots
+            for(let i = 0; i < maxSlots; i++) {
                 let slotDiv = document.createElement('div');
                 slotDiv.className = 'loadout-card';
                 
@@ -2188,7 +2213,7 @@
                 
                 if (!isSelected) {
                     cardDiv.onclick = () => {
-                        if (currentLoadout.length < 6) {
+                        if (currentLoadout.length < maxSlots) {
                             currentLoadout.push(bot.id);
                             renderLoadout();
                         }
@@ -2198,7 +2223,7 @@
             });
 
             // Handle button state
-            let requiredAmount = Math.min(pickableBots.length, 6);
+            let requiredAmount = Math.min(pickableBots.length, maxSlots);
             if (currentLoadout.length === requiredAmount) {
                 confirmBtn.disabled = false;
                 confirmBtn.style.opacity = 1;
@@ -2248,6 +2273,17 @@
             SoundEngine.init();
             levelStartScore = score; // Save current score as the new baseline for the next level
             openLoadoutScreen();
+        });
+
+        document.getElementById('buySlotBtn').addEventListener('click', () => {
+            if (score >= 2000 && !extraSlotPurchased) {
+                score -= 2000;
+                levelStartScore -= 2000; // Deduct from the checkpoint score so you don't lose the slot on a level restart
+                extraSlotPurchased = true;
+                maxSlots = 7;
+                SoundEngine.energy(); 
+                renderLoadout(); 
+            }
         });
 
         document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
