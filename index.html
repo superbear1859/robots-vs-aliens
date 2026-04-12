@@ -273,6 +273,45 @@
             flex-shrink: 0;
         }
 
+        .loadout-slots {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+        
+        .loadout-pool {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%;
+        }
+        
+        .loadout-card {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        
+        .loadout-card.selected {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .loadout-card.hoverable:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
         .manual-card p {
             font-size: 14px !important;
             margin: 5px 0 !important;
@@ -304,6 +343,18 @@
             .manual-card h3 svg { width: calc(var(--vh, 1vh) * 5); height: calc(var(--vh, 1vh) * 5); }
             .manual-card p { font-size: calc(var(--vh, 1vh) * 3.5) !important; margin: calc(var(--vh, 1vh) * 0.5) 0 !important; }
             #fullscreenBtn svg { width: calc(var(--vh, 1vh) * 3.5); height: calc(var(--vh, 1vh) * 3.5); }
+            
+            /* Loadout Screen Mobile Constraints */
+            #loadoutScreen h1 { font-size: calc(var(--vh, 1vh) * 6); margin-bottom: calc(var(--vh, 1vh) * 1); }
+            #loadoutScreen p { font-size: calc(var(--vh, 1vh) * 3); margin-bottom: calc(var(--vh, 1vh) * 1); }
+            #drillNote { font-size: calc(var(--vh, 1vh) * 2.5) !important; margin-bottom: calc(var(--vh, 1vh) * 1) !important; }
+            .loadout-slots { gap: calc(var(--vh, 1vh) * 1); margin-bottom: calc(var(--vh, 1vh) * 1); }
+            .loadout-pool { gap: calc(var(--vh, 1vh) * 1); }
+            .loadout-card { width: calc(var(--vh, 1vh) * 11); height: calc(var(--vh, 1vh) * 11); border-width: 2px !important; border-radius: 4px; }
+            .loadout-card span:nth-child(1) { font-size: calc(var(--vh, 1vh) * 4) !important; }
+            .loadout-card span:nth-child(2) { font-size: calc(var(--vh, 1vh) * 1.8) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
+            .loadout-card span:nth-child(3) { font-size: calc(var(--vh, 1vh) * 2) !important; margin-top: calc(var(--vh, 1vh) * 0.5) !important; }
+            #confirmLoadoutBtn { margin-top: calc(var(--vh, 1vh) * 1) !important; padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2); font-size: calc(var(--vh, 1vh) * 3); }
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -363,6 +414,15 @@
                 <!-- Dynamically populated via JS -->
             </div>
             <button id="closeManualBtn" class="main-btn">Close Database</button>
+        </div>
+
+        <div id="loadoutScreen" class="overlay hidden">
+            <h1 style="font-size: 3vw; margin-bottom: 10px;">Select Loadout</h1>
+            <p style="margin-bottom: 10px;">Choose up to 6 bots for this sector.</p>
+            <div id="selectedSlots" class="loadout-slots"></div>
+            <p id="drillNote" style="font-size: 1vw; color: #94a3b8; margin-bottom: 15px; display: none;">(The Drill Tool is automatically equipped)</p>
+            <div id="availablePool" class="loadout-pool"></div>
+            <button id="confirmLoadoutBtn" class="main-btn" style="margin-top: 20px;">Initialize Defense</button>
         </div>
     </div>
 
@@ -562,6 +622,8 @@
         let animationId;
         let nextAlienSpawnTime = 0;
 
+        let currentLoadout = []; // Tracks which 6 bots you chose for this level
+
         let grid = [];
         let defenders = [];
         let attackers = [];
@@ -581,6 +643,7 @@
 
         let selectedCardType = null;
 
+        // Added Spike Bot (ID 7) and Mega Spike (ID 8)
         const cardTypes = [
             { id: 0, name: "Battery Bot", cost: 50, color: "#facc15", symbol: "⚡", desc: "Generates Energy", hp: 100, fireRate: 0, cooldown: 450, currentCooldown: 0 },
             { id: 1, name: "Blaster Bot", cost: 100, color: "#38bdf8", symbol: "🔫", desc: "Basic Attack", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
@@ -588,7 +651,9 @@
             { id: 3, name: "Plasma Bot", cost: 200, color: "#a855f7", symbol: "⚛️", desc: "Heavy Damage", hp: 150, fireRate: 160, cooldown: 450, currentCooldown: 0 },
             { id: 4, name: "Bomb Bot", cost: 150, color: "#ef4444", symbol: "💣", desc: "Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 5, name: "Mine Bot", cost: 25, color: "#f97316", symbol: "🖲️", desc: "Explodes on Contact", hp: 100, fireRate: 0, cooldown: 1200, currentCooldown: 0 },
-            { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 }
+            { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 },
+            { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "📌", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
+            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "📍", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -840,6 +905,8 @@
                 this.isGenerator = card.id === 0;
                 this.isBomb = card.id === 4;
                 this.isMine = card.id === 5;
+                this.isSpike = card.id === 7 || card.id === 8; 
+                this.isMegaSpike = card.id === 8;
                 this.armed = false; 
             }
 
@@ -885,7 +952,6 @@
                 // --- NEW BATTERY BOT SURGE/FLASH EFFECT ---
                 if (this.isGenerator) {
                     let timeToGenerate = 400 - (this.timer % 400);
-                    // Flash rapidly and glow bright white for the last 60 frames (~1 second) before generating
                     if (timeToGenerate < 60) { 
                         ctx.globalAlpha = 0.5 + Math.abs(Math.sin(frame * 0.4)) * 0.5;
                         ctx.shadowColor = "#fff"; 
@@ -897,24 +963,55 @@
                 ctx.strokeStyle = this.card.color;
                 ctx.lineWidth = 3;
 
-                ctx.beginPath();
-                ctx.roundRect(drawX, drawY, this.width, this.height, 10);
-                ctx.fill();
-                ctx.stroke();
+                // Unique flat drawing for Spike Bots and Mega Spikes
+                if (this.isSpike) {
+                    ctx.beginPath();
+                    ctx.roundRect(drawX, drawY + this.height - 20, this.width, 20, 5);
+                    ctx.fill();
+                    ctx.stroke();
 
-                ctx.shadowBlur = 0;
+                    // Draw physical spikes sticking up from the ground
+                    ctx.beginPath();
+                    let numSpikes = this.isMegaSpike ? 5 : 4;
+                    let spikeH = this.isMegaSpike ? 35 : 20;
+                    let startOffset = this.isMegaSpike ? 10 : 16;
+                    let spacing = this.isMegaSpike ? 14 : 16;
+                    
+                    for(let s=0; s < numSpikes; s++) {
+                        let sx = drawX + startOffset + s * spacing;
+                        ctx.moveTo(sx, drawY + this.height - 20);
+                        ctx.lineTo(sx + 6, drawY + this.height - 20 - spikeH);
+                        ctx.lineTo(sx + 12, drawY + this.height - 20);
+                    }
+                    ctx.stroke();
+                    
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = this.card.color;
+                    ctx.font = "16px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(this.card.symbol, cx, drawY + this.height - 10);
+                } else {
+                    // Normal Bot Drawing
+                    ctx.beginPath();
+                    ctx.roundRect(drawX, drawY, this.width, this.height, 10);
+                    ctx.fill();
+                    ctx.stroke();
 
-                ctx.save();
-                ctx.translate(cx, cy);
-                if (this.card.id === 1) {
-                    ctx.scale(-1, 1); 
+                    ctx.shadowBlur = 0;
+
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    if (this.card.id === 1) {
+                        ctx.scale(-1, 1); 
+                    }
+                    ctx.fillStyle = this.card.color;
+                    ctx.font = "30px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(this.card.symbol, 0, 0);
+                    ctx.restore();
                 }
-                ctx.fillStyle = this.card.color;
-                ctx.font = "30px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(this.card.symbol, 0, 0);
-                ctx.restore();
 
                 ctx.fillStyle = "#ef4444";
                 ctx.fillRect(drawX, drawY - 10, this.width, 5);
@@ -1272,19 +1369,16 @@
             ctx.fillStyle = "#ef4444";
             ctx.fillText(`Level: ${level} | Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 15);
 
-            let cardStartX = 150;
-            let cardWidth = 85;
+            // Shrunk UI slightly to easily fit 8 total cards
+            let cardStartX = 140;
+            let cardWidth = 75;
             let cardHeight = 85;
-            let cardGap = 10;
+            let cardGap = 8;
 
-            let availableCards = [];
-            if (level >= 1) availableCards.push(cardTypes.find(c => c.id === 1)); 
-            if (level >= 2) availableCards.push(cardTypes.find(c => c.id === 0)); 
-            if (level >= 3) availableCards.push(cardTypes.find(c => c.id === 4)); 
-            if (level >= 4) availableCards.push(cardTypes.find(c => c.id === 2)); 
-            if (level >= 5) availableCards.push(cardTypes.find(c => c.id === 5)); 
-            if (level >= 6) availableCards.push(cardTypes.find(c => c.id === 6)); 
-            if (level >= 7) availableCards.push(cardTypes.find(c => c.id === 3)); 
+            let availableCards = currentLoadout.map(id => cardTypes.find(c => c.id === id));
+            if (level >= 6) {
+                availableCards.push(cardTypes.find(c => c.id === 6)); // Drill tool automatically added if unlocked
+            }
 
             for (let i = 0; i < availableCards.length; i++) {
                 let card = availableCards[i];
@@ -1407,6 +1501,20 @@
                             selectedCardType = null; 
                             SoundEngine.drill(); 
                         }
+                        mouse.clicked = false; 
+                        mouse.dropped = false;
+                    } else if (selectedCardType === 8) { // Mega Spike Upgrade interaction
+                        if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 7) {
+                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                                defenders[defenderIndex] = new Defender(gridX, gridY, card);
+                                energy -= card.cost;
+                                card.currentCooldown = card.cooldown; 
+                                selectedCardType = null; 
+                                SoundEngine.place(); 
+                            }
+                        }
+                        mouse.clicked = false; 
+                        mouse.dropped = false;
                     } else { // Normal Bot Placement
                         if (defenderIndex === -1) {
                             if (energy >= card.cost && card.currentCooldown <= 0) {
@@ -1417,9 +1525,9 @@
                                 SoundEngine.place(); 
                             }
                         }
+                        mouse.clicked = false; 
+                        mouse.dropped = false;
                     }
-                    mouse.clicked = false; 
-                    mouse.dropped = false;
                 } else if (mouse.y > TOP_BAR_HEIGHT) {
                     selectedCardType = null;
                     mouse.clicked = false;
@@ -1518,6 +1626,13 @@
                             defender.explode(1.0); 
                             defender.health = 0; 
                             isAttacking = false;
+                        } else if (defender.isSpike) {
+                            // Aliens DO NOT stop to eat the spike. They walk over it and bleed health continuously.
+                            let dmgToAlien = defender.isMegaSpike ? 2.5 : 1.0;
+                            let dmgToSpike = defender.isMegaSpike ? 0.08 : 0.15;
+                            attacker.health -= dmgToAlien; 
+                            defender.health -= dmgToSpike; 
+                            if (frame % 30 === 0) SoundEngine.hit();
                         } else {
                             defender.health -= attacker.damage;
                             isAttacking = true;
@@ -1621,6 +1736,8 @@
             if (level >= 5) unlockedBots.push(cardTypes.find(c => c.id === 5)); 
             if (level >= 6) unlockedBots.push(cardTypes.find(c => c.id === 6)); 
             if (level >= 7) unlockedBots.push(cardTypes.find(c => c.id === 3)); 
+            if (level >= 8) unlockedBots.push(cardTypes.find(c => c.id === 7)); 
+            if (level >= 9) unlockedBots.push(cardTypes.find(c => c.id === 8)); // Mega Spike
             
             unlockedBots.forEach(bot => {
                 html += `
@@ -1783,32 +1900,125 @@
             resetSpeedUI();
         }
 
-        function startGame() {
-            SoundEngine.init(); 
-
+        function openLoadoutScreen() {
             startScreen.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
             levelCompleteScreen.classList.add('hidden');
-            speedBtn.classList.remove('hidden-btn'); 
-            
-            level = 1; 
-            score = 0;
-            initLevel();
-            SoundEngine.startBGM(1); // Start music AFTER the speed has been reset
-            gameRunning = true;
-            animate();
+            gameOverScreen.classList.add('hidden');
+
+            let pickableBots = [];
+            if (level >= 1) pickableBots.push(cardTypes.find(c => c.id === 1)); 
+            if (level >= 2) pickableBots.push(cardTypes.find(c => c.id === 0)); 
+            if (level >= 3) pickableBots.push(cardTypes.find(c => c.id === 4)); 
+            if (level >= 4) pickableBots.push(cardTypes.find(c => c.id === 2)); 
+            if (level >= 5) pickableBots.push(cardTypes.find(c => c.id === 5)); 
+            if (level >= 7) pickableBots.push(cardTypes.find(c => c.id === 3)); 
+            if (level >= 8) pickableBots.push(cardTypes.find(c => c.id === 7));
+            if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8)); // Add to pickable loadout
+
+            if (pickableBots.length <= 6) {
+                // Automatically equip all bots and skip the loadout screen
+                currentLoadout = pickableBots.map(b => b.id);
+                speedBtn.classList.remove('hidden-btn'); 
+                
+                initLevel();
+                SoundEngine.startBGM(level);
+                gameRunning = true;
+                animate();
+            } else {
+                // Show the loadout screen if the player has more than 6 bots to choose from
+                document.getElementById('loadoutScreen').classList.remove('hidden');
+                
+                // Auto-fills slots initially to save player time
+                currentLoadout = pickableBots.slice(0, 6).map(b => b.id);
+                renderLoadout();
+            }
         }
 
-        function startNextLevel() {
-            SoundEngine.init();
+        function renderLoadout() {
+            const slotsContainer = document.getElementById('selectedSlots');
+            const poolContainer = document.getElementById('availablePool');
+            const confirmBtn = document.getElementById('confirmLoadoutBtn');
+            const drillNote = document.getElementById('drillNote');
 
-            levelCompleteScreen.classList.add('hidden');
-            speedBtn.classList.remove('hidden-btn'); 
-            
-            initLevel();
-            SoundEngine.startBGM(level); // Start music AFTER the speed has been reset
-            gameRunning = true;
-            animate();
+            drillNote.style.display = level >= 6 ? 'block' : 'none';
+            slotsContainer.innerHTML = '';
+            poolContainer.innerHTML = '';
+
+            let pickableBots = [];
+            if (level >= 1) pickableBots.push(cardTypes.find(c => c.id === 1)); 
+            if (level >= 2) pickableBots.push(cardTypes.find(c => c.id === 0)); 
+            if (level >= 3) pickableBots.push(cardTypes.find(c => c.id === 4)); 
+            if (level >= 4) pickableBots.push(cardTypes.find(c => c.id === 2)); 
+            if (level >= 5) pickableBots.push(cardTypes.find(c => c.id === 5)); 
+            if (level >= 7) pickableBots.push(cardTypes.find(c => c.id === 3)); 
+            if (level >= 8) pickableBots.push(cardTypes.find(c => c.id === 7));
+            if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8));
+
+            // Render top 6 slots
+            for(let i = 0; i < 6; i++) {
+                let slotDiv = document.createElement('div');
+                slotDiv.className = 'loadout-card';
+                
+                if (i < currentLoadout.length) {
+                    let botId = currentLoadout[i];
+                    let bot = cardTypes.find(c => c.id === botId);
+                    slotDiv.style.border = `2px solid ${bot.color}`;
+                    slotDiv.style.background = '#1e293b';
+                    
+                    slotDiv.innerHTML = `
+                        <span style="color:${bot.color}; font-size:26px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block;">${bot.symbol}</span>
+                        <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
+                        <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
+                    `;
+                    slotDiv.onclick = () => {
+                        currentLoadout.splice(i, 1);
+                        renderLoadout();
+                    };
+                } else {
+                    slotDiv.style.border = '2px dashed #475569';
+                    slotDiv.style.background = 'transparent';
+                    slotDiv.style.cursor = 'default';
+                    slotDiv.classList.remove('hoverable');
+                }
+                slotsContainer.appendChild(slotDiv);
+            }
+
+            // Render bottom available pool
+            pickableBots.forEach(bot => {
+                let isSelected = currentLoadout.includes(bot.id);
+                let cardDiv = document.createElement('div');
+                cardDiv.className = 'loadout-card' + (isSelected ? ' selected' : ' hoverable');
+                cardDiv.style.border = `2px solid ${bot.color}`;
+                cardDiv.style.background = '#1e293b';
+                
+                cardDiv.innerHTML = `
+                    <span style="color:${bot.color}; font-size:26px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block;">${bot.symbol}</span>
+                    <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
+                    <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
+                `;
+                
+                if (!isSelected) {
+                    cardDiv.onclick = () => {
+                        if (currentLoadout.length < 6) {
+                            currentLoadout.push(bot.id);
+                            renderLoadout();
+                        }
+                    };
+                }
+                poolContainer.appendChild(cardDiv);
+            });
+
+            // Handle button state
+            let requiredAmount = Math.min(pickableBots.length, 6);
+            if (currentLoadout.length === requiredAmount) {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = 1;
+                confirmBtn.style.cursor = 'pointer';
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = 0.5;
+                confirmBtn.style.cursor = 'not-allowed';
+            }
         }
 
         function completeLevel() {
@@ -1830,9 +2040,34 @@
             gameOverScreen.classList.remove('hidden');
         }
 
-        startBtn.addEventListener('click', startGame);
-        restartBtn.addEventListener('click', startGame);
-        nextLevelBtn.addEventListener('click', startNextLevel);
+        startBtn.addEventListener('click', () => {
+            SoundEngine.init(); 
+            level = 1; 
+            score = 0;
+            openLoadoutScreen();
+        });
+
+        restartBtn.addEventListener('click', () => {
+            SoundEngine.init(); 
+            level = 1; 
+            score = 0;
+            openLoadoutScreen();
+        });
+
+        nextLevelBtn.addEventListener('click', () => {
+            SoundEngine.init();
+            openLoadoutScreen();
+        });
+
+        document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
+            document.getElementById('loadoutScreen').classList.add('hidden');
+            speedBtn.classList.remove('hidden-btn'); 
+            
+            initLevel();
+            SoundEngine.startBGM(level);
+            gameRunning = true;
+            animate();
+        });
 
         activeRows = 1;
         createGrid();
