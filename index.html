@@ -653,7 +653,9 @@
             { id: 5, name: "Mine Bot", cost: 25, color: "#f97316", symbol: "🖲️", desc: "Explodes on Contact", hp: 100, fireRate: 0, cooldown: 1200, currentCooldown: 0 },
             { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 },
             { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "📌", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
-            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "📍", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 }
+            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "📍", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 9, name: "Double Bot", cost: 200, color: "#0ea5e9", symbol: "♊", desc: "Fires two shots", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
+            { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -662,7 +664,10 @@
             { type: 'runner', hp: 80, speed: 0.6, damage: 0.2, color: '#f472b6', radius: 25, score: 20 },
             { type: 'goliath', hp: 800, speed: 0.08, damage: 3.0, color: '#8b5cf6', radius: 45, score: 100 },
             { type: 'stinger', hp: 60, speed: 0.45, damage: 2.5, color: '#fbbf24', radius: 20, score: 25 },
-            { type: 'phantom', hp: 120, speed: 0.3, damage: 0.5, color: '#2dd4bf', radius: 28, score: 40 }
+            { type: 'phantom', hp: 120, speed: 0.3, damage: 0.5, color: '#2dd4bf', radius: 28, score: 40 },
+            { type: 'bulwark', hp: 600, speed: 0.12, damage: 0.5, color: '#94a3b8', radius: 35, score: 50 },
+            { type: 'weaver', hp: 180, speed: 0.35, damage: 1.5, color: '#d946ef', radius: 26, score: 45 },
+            { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 }
         ];
 
         let canvasRect = canvas.getBoundingClientRect();
@@ -901,7 +906,9 @@
                 this.maxHealth = card.hp;
                 this.timer = 0;
                 
-                this.isShooter = card.id === 1 || card.id === 3;
+                this.isShooter = card.id === 1 || card.id === 3 || card.id === 9 || card.id === 10;
+                this.isDoubleShooter = card.id === 9;
+                this.isTripleShooter = card.id === 10;
                 this.isGenerator = card.id === 0;
                 this.isBomb = card.id === 4;
                 this.isMine = card.id === 5;
@@ -1067,17 +1074,50 @@
 
                 if (this.isShooter && this.timer % this.card.fireRate === 0) {
                     let alienInLane = false;
+                    let alienAbove = false;
+                    let alienBelow = false;
+
                     for (let i = 0; i < attackers.length; i++) {
-                        if (attackers[i].y === this.y && attackers[i].x > this.x && attackers[i].x < CANVAS_WIDTH) {
-                            alienInLane = true;
-                            break;
+                        if (attackers[i].x > this.x && attackers[i].x < CANVAS_WIDTH) {
+                            if (attackers[i].y === this.y) alienInLane = true;
+                            if (attackers[i].y === this.y - CELL_SIZE) alienAbove = true;
+                            if (attackers[i].y === this.y + CELL_SIZE) alienBelow = true;
                         }
                     }
-                    if (alienInLane) {
-                        let isPlasma = this.card.id === 3;
-                        projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+
+                    let shotFired = false;
+                    let isPlasma = this.card.id === 3;
+
+                    if (this.isTripleShooter) {
+                        if (alienInLane || alienAbove || alienBelow) {
+                            // Fire in current lane
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+                            // Fire in lane above (if it exists on the board)
+                            if (this.y - CELL_SIZE >= getGridStartY()) {
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma));
+                            }
+                            // Fire in lane below (if it exists on the board)
+                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) {
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma));
+                            }
+                            shotFired = true;
+                        }
+                    } else if (this.isDoubleShooter) {
+                        if (alienInLane) {
+                            // Spawn two projectiles slightly spaced apart for visual distinction
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE - 25, this.y + CELL_SIZE / 2, isPlasma));
+                            shotFired = true;
+                        }
+                    } else {
+                        if (alienInLane) {
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+                            shotFired = true;
+                        }
+                    }
+
+                    if (shotFired) {
                         SoundEngine.shoot(isPlasma); 
-                        
                         this.offsetX = 5; 
                         setTimeout(() => this.offsetX = 10, 100);
                     }
@@ -1127,15 +1167,21 @@
                 if (level >= 5) availableTypes.push(3); // goliath
                 if (level >= 6) availableTypes.push(4); // stinger
                 if (level >= 7) availableTypes.push(5); // phantom
+                if (level >= 8) availableTypes.push(6); // bulwark
+                if (level >= 9) availableTypes.push(7); // weaver
+                if (level >= 10) availableTypes.push(8); // apex
 
                 let typeIdx = 0;
                 let roll = Math.random();
                 
-                if (availableTypes.includes(5) && roll > 0.85) typeIdx = 5;
-                else if (availableTypes.includes(3) && roll > 0.75) typeIdx = 3;
-                else if (availableTypes.includes(4) && roll > 0.65) typeIdx = 4;
-                else if (availableTypes.includes(1) && roll > 0.5) typeIdx = 1;
-                else if (availableTypes.includes(2) && roll > 0.35) typeIdx = 2;
+                if (availableTypes.includes(8) && roll > 0.90) typeIdx = 8;
+                else if (availableTypes.includes(3) && roll > 0.82) typeIdx = 3;
+                else if (availableTypes.includes(5) && roll > 0.72) typeIdx = 5;
+                else if (availableTypes.includes(6) && roll > 0.62) typeIdx = 6;
+                else if (availableTypes.includes(7) && roll > 0.52) typeIdx = 7;
+                else if (availableTypes.includes(4) && roll > 0.40) typeIdx = 4;
+                else if (availableTypes.includes(1) && roll > 0.25) typeIdx = 1;
+                else if (availableTypes.includes(2) && roll > 0.12) typeIdx = 2;
                 else typeIdx = 0;
                 
                 const config = alienConfigs[typeIdx];
@@ -1196,6 +1242,36 @@
                     ctx.closePath();
                 } else if (this.type === 'phantom') {
                     ctx.ellipse(cx, cy, this.radius, this.radius * 0.7, 0, 0, Math.PI * 2);
+                } else if (this.type === 'bulwark') {
+                    for (let i = 0; i < 8; i++) {
+                        let angle = (Math.PI / 4) * i + (Math.PI / 8);
+                        let hx = cx + this.radius * Math.cos(angle);
+                        let hy = cy + this.radius * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                } else if (this.type === 'weaver') {
+                    // Uses a sine wave mapped to a circle to create rippling/morphing edges
+                    for (let i = 0; i <= Math.PI * 2.01; i += Math.PI / 12) {
+                        let r = this.radius * (0.75 + 0.25 * Math.sin(i * 4 + this.frameX * 0.1)); 
+                        let hx = cx + r * Math.cos(i);
+                        let hy = cy + r * Math.sin(i);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                } else if (this.type === 'apex') {
+                    // 8-pointed star logic
+                    for (let i = 0; i < 16; i++) {
+                        let angle = (Math.PI / 8) * i;
+                        let r = (i % 2 === 0) ? this.radius : this.radius * 0.55;
+                        let hx = cx + r * Math.cos(angle);
+                        let hy = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
                 }
                 ctx.fill();
                 ctx.stroke();
@@ -1761,6 +1837,8 @@
             if (level >= 7) unlockedBots.push(cardTypes.find(c => c.id === 3)); 
             if (level >= 8) unlockedBots.push(cardTypes.find(c => c.id === 7)); 
             if (level >= 9) unlockedBots.push(cardTypes.find(c => c.id === 8)); // Mega Spike
+            if (level >= 10) unlockedBots.push(cardTypes.find(c => c.id === 9)); // Double Bot
+            if (level >= 11) unlockedBots.push(cardTypes.find(c => c.id === 10)); // Triple Bot
             
             unlockedBots.forEach(bot => {
                 html += `
@@ -1782,6 +1860,9 @@
             if (level >= 5) unlockedAliens.push(alienConfigs[3]); 
             if (level >= 6) unlockedAliens.push(alienConfigs[4]); 
             if (level >= 7) unlockedAliens.push(alienConfigs[5]); 
+            if (level >= 8) unlockedAliens.push(alienConfigs[6]); 
+            if (level >= 9) unlockedAliens.push(alienConfigs[7]); 
+            if (level >= 10) unlockedAliens.push(alienConfigs[8]); 
             
             unlockedAliens.forEach(alien => {
                 let displayType = alien.type.charAt(0).toUpperCase() + alien.type.slice(1);
@@ -1818,6 +1899,15 @@
                 } else if (alien.type === 'phantom') {
                     desc = "Ghostly entity. Phases its opacity, making it hard to track.";
                     svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color}); opacity: 0.6;"><ellipse cx="30" cy="30" rx="25" ry="17.5" fill="#020617" stroke="${alien.color}" stroke-width="4"/>${faceSVG}</svg>`;
+                } else if (alien.type === 'bulwark') {
+                    desc = "Mobile fortress. Extreme armor, barely does damage.";
+                    svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="25,5 55,5 75,25 75,55 55,75 25,75 5,55 5,25" fill="#020617" stroke="${alien.color}" stroke-width="4"/><g transform="translate(10, 10)">${faceSVG}</g></svg>`;
+                } else if (alien.type === 'weaver') {
+                    desc = "Unpredictable morphing unit. Fast and hits hard.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><path d="M 30,5 Q 45,5 45,15 Q 55,15 55,30 Q 55,45 45,45 Q 45,55 30,55 Q 15,55 15,45 Q 5,45 5,30 Q 5,15 15,15 Q 15,5 30,5 Z" fill="#020617" stroke="${alien.color}" stroke-width="4"/>${faceSVG}</svg>`;
+                } else if (alien.type === 'apex') {
+                    desc = "The ultimate swarm lord. Annihilates everything.";
+                    svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="40,5 46,26 65,15 54,34 75,40 54,46 65,65 46,54 40,75 34,54 15,65 26,46 5,40 26,34 15,15 34,26" fill="#020617" stroke="${alien.color}" stroke-width="4"/><g transform="translate(10, 10)">${faceSVG}</g></svg>`;
                 }
                 
                 html += `
@@ -1936,7 +2026,9 @@
             if (level >= 5) pickableBots.push(cardTypes.find(c => c.id === 5)); 
             if (level >= 7) pickableBots.push(cardTypes.find(c => c.id === 3)); 
             if (level >= 8) pickableBots.push(cardTypes.find(c => c.id === 7));
-            if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8)); // Add to pickable loadout
+            if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8));
+            if (level >= 10) pickableBots.push(cardTypes.find(c => c.id === 9));
+            if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
 
             if (pickableBots.length <= 6) {
                 // Automatically equip all bots and skip the loadout screen
@@ -1976,6 +2068,8 @@
             if (level >= 7) pickableBots.push(cardTypes.find(c => c.id === 3)); 
             if (level >= 8) pickableBots.push(cardTypes.find(c => c.id === 7));
             if (level >= 9) pickableBots.push(cardTypes.find(c => c.id === 8));
+            if (level >= 10) pickableBots.push(cardTypes.find(c => c.id === 9));
+            if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
 
             // Render top 6 slots
             for(let i = 0; i < 6; i++) {
