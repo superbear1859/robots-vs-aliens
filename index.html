@@ -1058,7 +1058,8 @@
                     }
                 }
 
-                ctx.fillStyle = "#1e293b";
+                // If Freeze Bot, use a deep frosty blue background instead of standard dark grey
+                ctx.fillStyle = this.card.id === 14 ? "#082f49" : "#1e293b"; 
                 ctx.strokeStyle = this.card.color;
                 ctx.lineWidth = 3;
 
@@ -1163,8 +1164,33 @@
                         for (let k = 0; k < pos.length; k++) {
                             ctx.fillText("🔫", pos[k].x, pos[k].y);
                         }
+                    } else if (this.card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
+                        ctx.scale(-1, 1); 
+                        
+                        // Handle
+                        ctx.fillStyle = "#2563eb"; 
+                        ctx.beginPath();
+                        ctx.roundRect(-3, 0, 10, 18, 2);
+                        ctx.fill();
+                        
+                        // Barrel
+                        ctx.fillStyle = "#60a5fa"; 
+                        ctx.beginPath();
+                        ctx.roundRect(-18, -8, 25, 13, 3);
+                        ctx.fill();
+                        
+                        // Ice Nozzle
+                        ctx.fillStyle = "#bae6fd"; 
+                        ctx.beginPath();
+                        ctx.roundRect(-21, -5, 5, 8, 1);
+                        ctx.fill();
+                        
+                        // Top Highlight Strip
+                        ctx.fillStyle = "#e0f2fe"; 
+                        ctx.fillRect(-18, -8, 20, 3);
+
                     } else { // Standard Graphic behavior
-                        if (this.card.id === 1 || this.card.id === 14) {
+                        if (this.card.id === 1) {
                             ctx.scale(-1, 1); 
                         }
                         ctx.fillStyle = this.card.color;
@@ -1390,7 +1416,7 @@
                 
                 this.movement = this.speed;
                 this.frameX = 0;
-                this.freezeTimer = 0; // NEW: Timer for freeze effect
+                this.freezeTimer = 0; // Timer for freeze effect
             }
 
             draw() {
@@ -1551,17 +1577,39 @@
                 ctx.shadowColor = this.color;
                 ctx.shadowBlur = 10;
                 ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
                 
-                ctx.strokeStyle = this.color;
-                ctx.lineWidth = this.radius;
-                ctx.beginPath();
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.x - 15, this.y);
-                ctx.stroke();
+                if (this.isFreeze) {
+                    // Draw sharp icicle projectile
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 12, this.y); // Sharp tip pointing forward
+                    ctx.lineTo(this.x - 10, this.y - 4); // Top back
+                    ctx.lineTo(this.x - 10, this.y + 4); // Bottom back
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Add a tiny white highlight to make it look like reflective ice
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 8, this.y);
+                    ctx.lineTo(this.x - 8, this.y - 2);
+                    ctx.lineTo(this.x - 8, this.y);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Standard plasma/blaster projectile
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = this.radius;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x - 15, this.y);
+                    ctx.stroke();
+                }
+                
+                ctx.shadowBlur = 0;
             }
 
             update() {
@@ -1663,9 +1711,18 @@
                     <span style="position:absolute; bottom: 0; left: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
                     <span style="position:absolute; bottom: 0; right: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
                 </div>`;
+            } else if (bot.id === 14) { // Custom Hand-Drawn Freeze Blaster SVG
+                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; transform:scale(-1,1); vertical-align:middle;">
+                    <svg viewBox="-20 -10 30 28" width="100%" height="100%">
+                        <rect x="-3" y="0" width="10" height="18" fill="#2563eb" rx="2"/>
+                        <rect x="-18" y="-8" width="25" height="13" fill="#60a5fa" rx="3"/>
+                        <rect x="-21" y="-5" width="5" height="8" fill="#bae6fd" rx="1"/>
+                        <rect x="-18" y="-8" width="20" height="3" fill="#e0f2fe"/>
+                    </svg>
+                </div>`;
             }
             // Standard symbol
-            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 || bot.id === 14 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
+            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
         }
 
         function drawTopBar() {
@@ -1729,7 +1786,8 @@
                     ctx.shadowBlur = 0;
                 }
 
-                ctx.fillStyle = "#1e293b";
+                // If Freeze Bot, use a deep frosty blue background instead of standard dark grey
+                ctx.fillStyle = card.id === 14 ? "#082f49" : "#1e293b"; 
                 ctx.beginPath();
                 ctx.roundRect(x, y, cardWidth, cardHeight, 8);
                 ctx.fill();
@@ -1773,8 +1831,33 @@
                     ctx.fillText("🔫", 0, 0);
                     ctx.fillText("🔫", -14, 14);
                     ctx.fillText("🔫", 14, 14);
+                } else if (card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
+                    ctx.scale(-1, 1); 
+                    
+                    // Handle
+                    ctx.fillStyle = "#2563eb"; 
+                    ctx.beginPath();
+                    ctx.roundRect(-3, 0, 10, 18, 2);
+                    ctx.fill();
+                    
+                    // Barrel
+                    ctx.fillStyle = "#60a5fa"; 
+                    ctx.beginPath();
+                    ctx.roundRect(-18, -8, 25, 13, 3);
+                    ctx.fill();
+                    
+                    // Ice Nozzle
+                    ctx.fillStyle = "#bae6fd"; 
+                    ctx.beginPath();
+                    ctx.roundRect(-21, -5, 5, 8, 1);
+                    ctx.fill();
+                    
+                    // Top Highlight Strip
+                    ctx.fillStyle = "#e0f2fe"; 
+                    ctx.fillRect(-18, -8, 20, 3);
+
                 } else { // Standard Graphic
-                    if (card.id === 1 || card.id === 14) ctx.scale(-1, 1); 
+                    if (card.id === 1) ctx.scale(-1, 1); 
                     ctx.fillStyle = card.color;
                     ctx.font = "26px Arial";
                     ctx.textAlign = "center";
@@ -2151,7 +2234,7 @@
             
             unlockedBots.forEach(bot => {
                 html += `
-                    <div class="manual-card" style="border-color: ${bot.color}">
+                    <div class="manual-card" style="border-color: ${bot.color}; background: ${bot.id === 14 ? '#082f49' : 'rgba(15, 23, 42, 0.95)'};">
                         <h3><span style="color:${bot.color}">${getBotSymbolHTML(bot, true)}</span> <span style="margin-left: 5px; color:#fff">${bot.name}</span></h3>
                         <p><strong>Cost:</strong> ${bot.cost > 0 ? bot.cost + ' ⚡' : 'Free'}</p>
                         <p><strong>Recharge:</strong> ${(bot.cooldown / 60).toFixed(1)}s</p>
@@ -2261,9 +2344,19 @@
                     ctx.fillText("🔫", 0, 0);
                     ctx.fillText("🔫", -15, 15);
                     ctx.fillText("🔫", 15, 15);
+                } else if (card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
+                    ctx.scale(-1, 1);
+                    ctx.fillStyle = "#2563eb"; 
+                    ctx.fillRect(-4, 0, 13, 24);
+                    ctx.fillStyle = "#60a5fa"; 
+                    ctx.fillRect(-24, -10, 33, 17);
+                    ctx.fillStyle = "#bae6fd"; 
+                    ctx.fillRect(-28, -6, 6, 10);
+                    ctx.fillStyle = "#e0f2fe"; 
+                    ctx.fillRect(-24, -10, 26, 4);
                 } else {
                     ctx.font = "40px Arial";
-                    if (card.id === 1 || card.id === 14) ctx.scale(-1, 1); 
+                    if (card.id === 1) ctx.scale(-1, 1); 
                     ctx.fillText(card.symbol, 0, 0);
                 }
                 
@@ -2438,7 +2531,7 @@
                     let botId = currentLoadout[i];
                     let bot = cardTypes.find(c => c.id === botId);
                     slotDiv.style.border = `2px solid ${bot.color}`;
-                    slotDiv.style.background = '#1e293b';
+                    slotDiv.style.background = bot.id === 14 ? '#082f49' : '#1e293b';
                     
                     slotDiv.innerHTML = `
                         <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
@@ -2466,7 +2559,7 @@
                 let cardDiv = document.createElement('div');
                 cardDiv.className = 'loadout-card' + (isSelected ? ' selected' : ' hoverable');
                 cardDiv.style.border = `2px solid ${bot.color}`;
-                cardDiv.style.background = '#1e293b';
+                cardDiv.style.background = bot.id === 14 ? '#082f49' : '#1e293b';
                 
                 cardDiv.innerHTML = `
                     <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
