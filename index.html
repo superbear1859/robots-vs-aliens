@@ -383,8 +383,7 @@
             
             #passcodeInput { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #passcodeError { font-size: calc(var(--vh, 1vh) * 3); height: calc(var(--vh, 1vh) * 3); margin-bottom: calc(var(--vh, 1vh) * 2); }
-            #skipBtn { bottom: calc(var(--vh, 1vh) * 10) !important; }
-            #addScoreBtn { top: calc(var(--vh, 1vh) * 22) !important; left: calc(var(--vh, 1vh) * 3) !important; bottom: auto !important; right: auto !important; }
+            #adminMenuBtn { top: calc(var(--vh, 1vh) * 2) !important; left: calc(var(--vh, 1vh) * 2) !important; padding: calc(var(--vh, 1vh) * 1) calc(var(--vh, 1vh) * 2) !important; font-size: calc(var(--vh, 1vh) * 2.5) !important;}
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -414,9 +413,7 @@
             <svg id="fsIconEnter" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
             <svg id="fsIconExit" style="display: none;" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
         </button>
-        <button id="speedBtn" class="in-game-btn hidden-btn">▶▶ 1x Speed</button>
-        <button id="skipBtn" class="in-game-btn hidden-btn" style="bottom: 70px;">Skip Level</button>
-        <button id="addScoreBtn" class="in-game-btn hidden-btn" style="top: 120px; left: 20px; bottom: auto; right: auto;">Earn 2000 Pts</button>
+        <button id="adminMenuBtn" class="in-game-btn hidden-btn" style="top: 20px; left: 20px; bottom: auto; right: auto; width: auto;">Admin Menu</button>
         
         <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
             <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
@@ -462,6 +459,16 @@
             <div class="button-group" style="margin-top: 20px; align-items: center;">
                 <button id="confirmLoadoutBtn" class="main-btn" style="margin-top: 0;">Initialize Defense</button>
                 <button id="buySlotBtn" class="main-btn" style="background: linear-gradient(45deg, #a855f7, #d946ef); font-size: 1.2vw; padding: 10px 20px; display: none; margin-top: 0;">Unlock 2 Extra Slots (2050 Score)</button>
+            </div>
+        </div>
+
+        <div id="adminScreen" class="overlay hidden" style="z-index: 45;">
+            <h1 style="font-size: 4vw; margin-bottom: 20px;">Admin Menu</h1>
+            <div class="button-group" style="flex-direction: column; gap: 20px; align-items: center;">
+                <button id="speedBtn" class="main-btn" style="width: 100%; max-width: 350px;">▶▶ 1x Speed</button>
+                <button id="addScoreBtn" class="main-btn" style="background: linear-gradient(45deg, #22c55e, #10b981); width: 100%; max-width: 350px;">Earn 2000 Pts</button>
+                <button id="skipBtn" class="main-btn" style="background: linear-gradient(45deg, #f43f5e, #ef4444); width: 100%; max-width: 350px;">Skip Level</button>
+                <button id="closeAdminBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); margin-top: 20px;">Close Menu</button>
             </div>
         </div>
 
@@ -645,6 +652,9 @@
         const closeManualBtn = document.getElementById('closeManualBtn');
         const manualScreen = document.getElementById('manualScreen');
         const speedBtn = document.getElementById('speedBtn');
+        const adminMenuBtn = document.getElementById('adminMenuBtn');
+        const adminScreen = document.getElementById('adminScreen');
+        const closeAdminBtn = document.getElementById('closeAdminBtn');
         const skipBtn = document.getElementById('skipBtn');
         const addScoreBtn = document.getElementById('addScoreBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -783,26 +793,19 @@
             gameSpeed = gameSpeed < 4 ? gameSpeed + 1 : 1;
             speedBtn.innerText = `▶▶ ${gameSpeed}x Speed`;
             
+            // Re-styled for the larger pop-up buttons
             if (gameSpeed === 1) {
-                speedBtn.style.borderColor = "#38bdf8";
-                speedBtn.style.boxShadow = "none";
-                speedBtn.style.color = "#fff";
+                speedBtn.style.background = "linear-gradient(45deg, #0284c7, #38bdf8)";
+                speedBtn.style.boxShadow = "0 0 20px rgba(56, 189, 248, 0.5)";
             } else if (gameSpeed === 2) {
-                speedBtn.style.borderColor = "#facc15";
-                speedBtn.style.boxShadow = "0 0 15px rgba(250, 204, 21, 0.5)";
-                speedBtn.style.color = "#facc15";
+                speedBtn.style.background = "linear-gradient(45deg, #ca8a04, #facc15)";
+                speedBtn.style.boxShadow = "0 0 20px rgba(250, 204, 21, 0.5)";
             } else if (gameSpeed === 3) {
-                speedBtn.style.borderColor = "#f97316"; 
-                speedBtn.style.boxShadow = "0 0 15px rgba(249, 115, 22, 0.5)";
-                speedBtn.style.color = "#f97316";
+                speedBtn.style.background = "linear-gradient(45deg, #ea580c, #f97316)"; 
+                speedBtn.style.boxShadow = "0 0 20px rgba(249, 115, 22, 0.5)";
             } else if (gameSpeed === 4) {
-                speedBtn.style.borderColor = "#ef4444"; 
-                speedBtn.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.8)";
-                speedBtn.style.color = "#ef4444";
-            }
-
-            if (gameRunning) {
-                SoundEngine.startBGM(level);
+                speedBtn.style.background = "linear-gradient(45deg, #dc2626, #ef4444)"; 
+                speedBtn.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.8)";
             }
         });
 
@@ -861,9 +864,8 @@
         function resetSpeedUI() {
             gameSpeed = 1;
             speedBtn.innerText = "▶▶ 1x Speed";
-            speedBtn.style.borderColor = "#38bdf8";
-            speedBtn.style.boxShadow = "none";
-            speedBtn.style.color = "#fff";
+            speedBtn.style.background = "linear-gradient(45deg, #0284c7, #38bdf8)";
+            speedBtn.style.boxShadow = "0 0 20px rgba(56, 189, 248, 0.5)";
         }
 
         class GuardBot {
@@ -2367,9 +2369,7 @@
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
                 currentLoadout = pickableBots.map(b => b.id);
-                speedBtn.classList.remove('hidden-btn'); 
-                skipBtn.classList.remove('hidden-btn'); 
-                addScoreBtn.classList.remove('hidden-btn');
+                adminMenuBtn.classList.remove('hidden-btn'); 
                 
                 initLevel();
                 SoundEngine.startBGM(level);
@@ -2503,9 +2503,7 @@
         function completeLevel() {
             gameRunning = false;
             cancelAnimationFrame(animationId);
-            speedBtn.classList.add('hidden-btn'); 
-            skipBtn.classList.add('hidden-btn'); 
-            addScoreBtn.classList.add('hidden-btn');
+            adminMenuBtn.classList.add('hidden-btn'); 
             SoundEngine.levelComplete(); 
             document.getElementById('levelStats').innerText = `Score: ${score}`;
             level++;
@@ -2515,9 +2513,7 @@
         function endGame() {
             gameRunning = false;
             cancelAnimationFrame(animationId);
-            speedBtn.classList.add('hidden-btn'); 
-            skipBtn.classList.add('hidden-btn'); 
-            addScoreBtn.classList.add('hidden-btn');
+            adminMenuBtn.classList.add('hidden-btn'); 
             SoundEngine.gameOverTone(); 
             statsEl.innerText = `Current Score: ${score} | Level: ${level}`;
             gameOverScreen.classList.remove('hidden');
@@ -2557,9 +2553,7 @@
 
         document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
             document.getElementById('loadoutScreen').classList.add('hidden');
-            speedBtn.classList.remove('hidden-btn'); 
-            skipBtn.classList.remove('hidden-btn'); 
-            addScoreBtn.classList.remove('hidden-btn');
+            adminMenuBtn.classList.remove('hidden-btn'); 
             
             initLevel();
             SoundEngine.startBGM(level);
@@ -2570,8 +2564,20 @@
         // --- Passcode Logic ---
         let passcodeAction = '';
 
-        skipBtn.addEventListener('click', () => {
+        adminMenuBtn.addEventListener('click', () => {
             gameRunning = false; // Pause the game
+            adminScreen.classList.remove('hidden');
+        });
+
+        closeAdminBtn.addEventListener('click', () => {
+            adminScreen.classList.add('hidden');
+            gameRunning = true;
+            SoundEngine.startBGM(level); // Restart music with updated speed
+            animate(); // Resume the game
+        });
+
+        skipBtn.addEventListener('click', () => {
+            adminScreen.classList.add('hidden');
             passcodeAction = 'skip';
             document.getElementById('passcodeTitle').innerText = 'Admin Override';
             document.getElementById('passcodeDesc').innerText = 'Enter passcode to bypass this sector.';
@@ -2582,7 +2588,7 @@
         });
 
         addScoreBtn.addEventListener('click', () => {
-            gameRunning = false; // Pause the game
+            adminScreen.classList.add('hidden');
             passcodeAction = 'score';
             document.getElementById('passcodeTitle').innerText = 'Score Inject';
             document.getElementById('passcodeDesc').innerText = 'Enter passcode to earn 2000 points.';
