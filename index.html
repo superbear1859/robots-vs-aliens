@@ -540,13 +540,13 @@
                 if (this.bgmInterval) clearInterval(this.bgmInterval);
                 this.bgmInterval = null;
             },
-            shoot: function(isPlasma) {
+            shoot: function(isPlasma, isFreeze = false) {
                 if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = isPlasma ? 'sawtooth' : 'square';
-                osc.frequency.setValueAtTime(isPlasma ? 400 : 800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(isPlasma ? 100 : 200, audioCtx.currentTime + 0.15);
+                osc.type = isPlasma ? 'sawtooth' : (isFreeze ? 'sine' : 'square');
+                osc.frequency.setValueAtTime(isPlasma ? 400 : (isFreeze ? 1000 : 800), audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(isPlasma ? 100 : (isFreeze ? 400 : 200), audioCtx.currentTime + 0.15);
                 gain.gain.setValueAtTime(isPlasma ? 0.08 : 0.04, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                 osc.connect(gain);
@@ -713,7 +713,8 @@
             { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 },
             { id: 12, name: "Smash Bot", cost: 75, color: "#f43f5e", symbol: "🪨", desc: "Leaps & crushes", hp: 300, fireRate: 0, cooldown: 900, currentCooldown: 0 },
-            { id: 13, name: "Multi Bot", cost: 250, color: "#f472b6", symbol: "🔢", desc: "Upgrades up to 5x", hp: 150, fireRate: 100, cooldown: 300, currentCooldown: 0 }
+            { id: 13, name: "Multi Bot", cost: 150, color: "#f472b6", symbol: "🔢", desc: "Upgrades up to 5x", hp: 150, fireRate: 100, cooldown: 300, currentCooldown: 0 },
+            { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -964,10 +965,11 @@
                 this.maxHealth = card.hp;
                 this.timer = 0;
                 
-                this.isShooter = card.id === 1 || card.id === 3 || card.id === 9 || card.id === 10 || card.id === 13;
+                this.isShooter = card.id === 1 || card.id === 3 || card.id === 9 || card.id === 10 || card.id === 13 || card.id === 14;
                 this.isDoubleShooter = card.id === 9;
                 this.isTripleShooter = card.id === 10;
                 this.isMultiShooter = card.id === 13;
+                this.isFreezeShooter = card.id === 14;
                 this.multiCount = 1; // Starts at 1 for Multi Bot
                 this.isGenerator = card.id === 0;
                 this.isBomb = card.id === 4;
@@ -1160,7 +1162,7 @@
                             ctx.fillText("🔫", pos[k].x, pos[k].y);
                         }
                     } else { // Standard Graphic behavior
-                        if (this.card.id === 1) {
+                        if (this.card.id === 1 || this.card.id === 14) {
                             ctx.scale(-1, 1); 
                         }
                         ctx.fillStyle = this.card.color;
@@ -1259,26 +1261,27 @@
 
                     let shotFired = false;
                     let isPlasma = this.card.id === 3;
+                    let isFreeze = this.card.id === 14;
 
                     if (this.isTripleShooter) {
                         if (alienInLane || alienAbove || alienBelow) {
                             // Fire in current lane
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze));
                             // Fire in lane above (if it exists on the board)
                             if (this.y - CELL_SIZE >= getGridStartY()) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze));
                             }
                             // Fire in lane below (if it exists on the board)
                             if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze));
                             }
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
                             // Spawn two projectiles vertically aligned with the barrels of the two guns
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze));
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
@@ -1294,19 +1297,19 @@
                             ];
                             let pos = positions[this.multiCount];
                             for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze));
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze));
                             shotFired = true;
                         }
                     }
 
                     if (shotFired) {
-                        SoundEngine.shoot(isPlasma); 
+                        SoundEngine.shoot(isPlasma, isFreeze); 
                         this.offsetX = 5; 
                         setTimeout(() => this.offsetX = 10, 100);
                     }
@@ -1385,6 +1388,7 @@
                 
                 this.movement = this.speed;
                 this.frameX = 0;
+                this.freezeTimer = 0; // NEW: Timer for freeze effect
             }
 
             draw() {
@@ -1398,10 +1402,13 @@
                     ctx.globalAlpha = 0.4 + Math.abs(Math.sin(this.frameX * 0.05)) * 0.6;
                 }
 
-                ctx.shadowColor = this.color;
+                // If frozen, override color to be a frosty blue
+                let currentColor = this.freezeTimer > 0 ? "#93c5fd" : this.color;
+
+                ctx.shadowColor = currentColor;
                 ctx.shadowBlur = 15;
                 ctx.fillStyle = "#020617";
-                ctx.strokeStyle = this.color;
+                ctx.strokeStyle = currentColor;
                 ctx.lineWidth = 3;
 
                 ctx.beginPath();
@@ -1513,20 +1520,28 @@
             }
 
             update() {
-                this.x -= this.movement;
-                this.frameX++;
+                // If frozen, significantly slow down movement and bobbing animation
+                if (this.freezeTimer > 0) {
+                    this.x -= this.movement * 0.4;
+                    this.frameX += 0.4;
+                    this.freezeTimer--;
+                } else {
+                    this.x -= this.movement;
+                    this.frameX++;
+                }
             }
         }
 
         class Projectile {
-            constructor(x, y, isPlasma) {
+            constructor(x, y, isPlasma, isFreeze = false) {
                 this.x = x;
                 this.y = y;
                 this.isPlasma = isPlasma;
-                this.speed = isPlasma ? 8 : 5;
-                this.damage = isPlasma ? 50 : 20;
-                this.radius = isPlasma ? 8 : 5;
-                this.color = isPlasma ? "#a855f7" : "#38bdf8";
+                this.isFreeze = isFreeze;
+                this.speed = isPlasma ? 8 : (isFreeze ? 7 : 5);
+                this.damage = isPlasma ? 50 : (isFreeze ? 15 : 20); // slightly less damage for freeze
+                this.radius = isPlasma ? 8 : (isFreeze ? 6 : 5);
+                this.color = isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8");
                 this.hit = false;
             }
 
@@ -1648,7 +1663,7 @@
                 </div>`;
             }
             // Standard symbol
-            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
+            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 || bot.id === 14 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
         }
 
         function drawTopBar() {
@@ -1757,7 +1772,7 @@
                     ctx.fillText("🔫", -14, 14);
                     ctx.fillText("🔫", 14, 14);
                 } else { // Standard Graphic
-                    if (card.id === 1) ctx.scale(-1, 1); 
+                    if (card.id === 1 || card.id === 14) ctx.scale(-1, 1); 
                     ctx.fillStyle = card.color;
                     ctx.font = "26px Arial";
                     ctx.textAlign = "center";
@@ -1970,6 +1985,11 @@
                         projectiles[i].y < attackers[j].y + attackers[j].height) {
                         
                         attackers[j].health -= projectiles[i].damage;
+                        
+                        if (projectiles[i].isFreeze) {
+                            attackers[j].freezeTimer = 180; // Apply 3 seconds of freeze effect
+                        }
+
                         projHit = true;
                         SoundEngine.alienHit(); 
 
@@ -2125,6 +2145,7 @@
             if (level >= 12) unlockedBots.push(cardTypes.find(c => c.id === 11)); // Mega Shield
             if (level >= 13) unlockedBots.push(cardTypes.find(c => c.id === 12)); // Smash Bot
             if (level >= 14) unlockedBots.push(cardTypes.find(c => c.id === 13)); // Multi Bot
+            if (level >= 15) unlockedBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
             
             unlockedBots.forEach(bot => {
                 html += `
@@ -2240,7 +2261,7 @@
                     ctx.fillText("🔫", 15, 15);
                 } else {
                     ctx.font = "40px Arial";
-                    if (card.id === 1) ctx.scale(-1, 1); 
+                    if (card.id === 1 || card.id === 14) ctx.scale(-1, 1); 
                     ctx.fillText(card.symbol, 0, 0);
                 }
                 
@@ -2339,8 +2360,9 @@
             if (level >= 10) pickableBots.push(cardTypes.find(c => c.id === 9));
             if (level >= 11) pickableBots.push(cardTypes.find(c => c.id === 10));
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
-            if (level >= 13) pickableBots.push(cardTypes.find(c => c.id === 12)); // Smash Bot
-            if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13)); // Multi Bot
+            if (level >= 13) pickableBots.push(cardTypes.find(c => c.id === 12));
+            if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13));
+            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -2405,6 +2427,7 @@
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
             if (level >= 13) pickableBots.push(cardTypes.find(c => c.id === 12));
             if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13));
+            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
