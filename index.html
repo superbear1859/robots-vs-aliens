@@ -738,7 +738,8 @@
             { type: 'phantom', hp: 120, speed: 0.3, damage: 0.5, color: '#2dd4bf', radius: 28, score: 40 },
             { type: 'bulwark', hp: 600, speed: 0.12, damage: 0.5, color: '#94a3b8', radius: 35, score: 50 },
             { type: 'weaver', hp: 180, speed: 0.35, damage: 1.5, color: '#d946ef', radius: 26, score: 45 },
-            { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 }
+            { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 },
+            { type: 'berserker', hp: 800, speed: 0.25, damage: 3.0, color: '#ea580c', radius: 38, score: 120 }
         ];
 
         let canvasRect = canvas.getBoundingClientRect();
@@ -1464,16 +1465,18 @@
                 if (level >= 8) availableTypes.push(6); // bulwark
                 if (level >= 9) availableTypes.push(7); // weaver
                 if (level >= 10) availableTypes.push(8); // apex
+                if (level >= 11) availableTypes.push(9); // berserker
 
                 let typeIdx = 0;
                 let roll = Math.random();
                 
-                if (availableTypes.includes(8) && roll > 0.90) typeIdx = 8;
-                else if (availableTypes.includes(3) && roll > 0.82) typeIdx = 3;
-                else if (availableTypes.includes(5) && roll > 0.72) typeIdx = 5;
-                else if (availableTypes.includes(6) && roll > 0.62) typeIdx = 6;
-                else if (availableTypes.includes(7) && roll > 0.52) typeIdx = 7;
-                else if (availableTypes.includes(4) && roll > 0.40) typeIdx = 4;
+                if (availableTypes.includes(8) && roll > 0.92) typeIdx = 8;
+                else if (availableTypes.includes(9) && roll > 0.85) typeIdx = 9;
+                else if (availableTypes.includes(3) && roll > 0.78) typeIdx = 3;
+                else if (availableTypes.includes(5) && roll > 0.68) typeIdx = 5;
+                else if (availableTypes.includes(6) && roll > 0.58) typeIdx = 6;
+                else if (availableTypes.includes(7) && roll > 0.48) typeIdx = 7;
+                else if (availableTypes.includes(4) && roll > 0.38) typeIdx = 4;
                 else if (availableTypes.includes(1) && roll > 0.25) typeIdx = 1;
                 else if (availableTypes.includes(2) && roll > 0.12) typeIdx = 2;
                 else typeIdx = 0;
@@ -1566,6 +1569,16 @@
                         let r = (i % 2 === 0) ? this.radius : this.radius * 0.55;
                         let hx = cx + r * Math.cos(angle);
                         let hy = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                } else if (this.type === 'berserker') {
+                    // Hexagon shape logic
+                    for (let i = 0; i < 6; i++) {
+                        let angle = (Math.PI / 3) * i;
+                        let hx = cx + this.radius * Math.cos(angle);
+                        let hy = cy + this.radius * Math.sin(angle);
                         if (i === 0) ctx.moveTo(hx, hy);
                         else ctx.lineTo(hx, hy);
                     }
@@ -2381,6 +2394,7 @@
             if (level >= 8) unlockedAliens.push(alienConfigs[6]); 
             if (level >= 9) unlockedAliens.push(alienConfigs[7]); 
             if (level >= 10) unlockedAliens.push(alienConfigs[8]); 
+            if (level >= 11) unlockedAliens.push(alienConfigs[9]); 
             
             unlockedAliens.forEach(alien => {
                 let displayType = alien.type.charAt(0).toUpperCase() + alien.type.slice(1);
@@ -2426,6 +2440,9 @@
                 } else if (alien.type === 'apex') {
                     desc = "The ultimate swarm lord. Annihilates everything.";
                     svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="40,5 46,26 65,15 54,34 75,40 54,46 65,65 46,54 40,75 34,54 15,65 26,46 5,40 26,34 15,15 34,26" fill="#020617" stroke="${alien.color}" stroke-width="4"/><g transform="translate(10, 10)">${faceSVG}</g></svg>`;
+                } else if (alien.type === 'berserker') {
+                    desc = "Terrifying speed combined with massive health.";
+                    svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="40,5 70,22 70,58 40,75 10,58 10,22" fill="#020617" stroke="${alien.color}" stroke-width="4"/><g transform="translate(10, 10)">${faceSVG}</g></svg>`;
                 }
                 
                 html += `
