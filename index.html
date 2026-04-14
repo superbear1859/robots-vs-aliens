@@ -1206,7 +1206,6 @@
                         ctx.fillRect(-18, -8, 20, 3);
 
                     } else if (this.card.id === 15) { // Chomp Bot Custom Inside Graphic
-                        ctx.scale(-1, 1);
                         ctx.fillStyle = this.card.color;
                         ctx.beginPath();
                         let mouthAngle = 0.2;
@@ -1225,7 +1224,6 @@
                         ctx.fill();
 
                         if (this.chompState === 'digesting') {
-                            ctx.scale(-1, 1); // unflip for text
                             ctx.fillStyle = "#bef264";
                             ctx.font = "bold 14px Orbitron";
                             let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
@@ -1795,8 +1793,8 @@
                         <rect x="-18" y="-8" width="20" height="3" fill="#e0f2fe"/>
                     </svg>
                 </div>`;
-            } else if (bot.id === 15) { // Chomp Bot Custom Graphic
-                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; transform:scale(-1,1); vertical-align:middle;">
+            } else if (bot.id === 15) { // Chomp Bot Custom Graphic (No flip needed)
+                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; vertical-align:middle;">
                     <svg viewBox="-20 -20 40 40" width="100%" height="100%">
                         <path d="M 0 0 L 16 -8 A 18 18 0 1 0 16 8 Z" fill="#84cc16" />
                         <circle cx="3" cy="-8" r="3" fill="#020617" />
@@ -1938,8 +1936,7 @@
                     ctx.fillStyle = "#e0f2fe"; 
                     ctx.fillRect(-18, -8, 20, 3);
 
-                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
-                    ctx.scale(-1, 1);
+                } else if (card.id === 15) { // Chomp Bot Custom Graphic UI
                     ctx.fillStyle = card.color;
                     ctx.beginPath();
                     let mouthAngle = 0.2;
@@ -2455,7 +2452,6 @@
                     ctx.fillStyle = "#e0f2fe"; 
                     ctx.fillRect(-24, -10, 26, 4);
                 } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
-                    ctx.scale(-1, 1);
                     ctx.fillStyle = card.color;
                     ctx.beginPath();
                     let mouthAngle = 0.2;
