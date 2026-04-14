@@ -1548,10 +1548,10 @@
             }
 
             update() {
-                // If frozen, significantly slow down movement and bobbing animation
+                // If frozen, slightly slow down movement and bobbing animation
                 if (this.freezeTimer > 0) {
-                    this.x -= this.movement * 0.4;
-                    this.frameX += 0.4;
+                    this.x -= this.movement * 0.7;
+                    this.frameX += 0.7;
                     this.freezeTimer--;
                 } else {
                     this.x -= this.movement;
