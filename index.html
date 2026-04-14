@@ -724,7 +724,8 @@
             { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 },
             { id: 12, name: "Smash Bot", cost: 75, color: "#f43f5e", symbol: "🪨", desc: "Leaps & crushes", hp: 300, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 13, name: "Multi Bot", cost: 150, color: "#f472b6", symbol: "🔢", desc: "Upgrades up to 5x", hp: 150, fireRate: 100, cooldown: 300, currentCooldown: 0 },
-            { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 }
+            { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
+            { id: 15, name: "Chomp Bot", cost: 150, color: "#84cc16", symbol: "🐊", desc: "Eats foes & digests", hp: 400, fireRate: 0, cooldown: 600, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -978,6 +979,7 @@
                 this.isMine = card.id === 5;
                 this.isSpike = card.id === 7 || card.id === 8; 
                 this.isMegaSpike = card.id === 8;
+                
                 this.isSquash = card.id === 12; 
                 this.squashState = 'idle'; // idle, jumping
                 this.jumpTimer = 0;
@@ -985,6 +987,11 @@
                 this.startY = 0;
                 this.targetX = 0;
                 this.targetY = 0;
+                
+                this.isChomp = card.id === 15;
+                this.chompState = 'idle'; // idle, digesting
+                this.digestTimer = 0;
+                
                 this.armed = false; 
             }
 
@@ -1058,8 +1065,8 @@
                     }
                 }
 
-                // If Freeze Bot, use a deep frosty blue background instead of standard dark grey
-                ctx.fillStyle = this.card.id === 14 ? "#082f49" : "#1e293b"; 
+                // If Freeze Bot, use a deep frosty blue background. If Chomp bot, use dark green.
+                ctx.fillStyle = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
                 ctx.strokeStyle = this.card.color;
                 ctx.lineWidth = 3;
 
@@ -1109,6 +1116,15 @@
                     ctx.beginPath();
                     ctx.roundRect(drawX, drawY, this.width, this.height, 10);
                     ctx.fill();
+                    
+                    // Add frosty blue aura to the background of the Freeze Bot tile
+                    if (this.card.id === 14) {
+                        ctx.save();
+                        ctx.fillStyle = "rgba(147, 197, 253, 0.2)";
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                    
                     ctx.stroke();
 
                     // Draw an extra glowing forcefield around the Mega Shield
@@ -1189,6 +1205,32 @@
                         ctx.fillStyle = "#e0f2fe"; 
                         ctx.fillRect(-18, -8, 20, 3);
 
+                    } else if (this.card.id === 15) { // Chomp Bot Custom Inside Graphic
+                        ctx.scale(-1, 1);
+                        ctx.fillStyle = this.card.color;
+                        ctx.beginPath();
+                        let mouthAngle = 0.2;
+                        if (this.chompState === 'idle') {
+                            mouthAngle = 0.05 + Math.abs(Math.sin(frame * 0.1)) * 0.25;
+                        } else if (this.chompState === 'digesting') {
+                            mouthAngle = 0.02; // Closed while digesting
+                        }
+                        ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+                        ctx.lineTo(0, 0);
+                        ctx.fill();
+
+                        ctx.fillStyle = "#020617";
+                        ctx.beginPath();
+                        ctx.arc(3, -9, 3, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        if (this.chompState === 'digesting') {
+                            ctx.scale(-1, 1); // unflip for text
+                            ctx.fillStyle = "#bef264";
+                            ctx.font = "bold 14px Orbitron";
+                            let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
+                            ctx.fillText(dots, 0, -25);
+                        }
                     } else { // Standard Graphic behavior
                         if (this.card.id === 1) {
                             ctx.scale(-1, 1); 
@@ -1213,6 +1255,39 @@
 
             update() {
                 this.timer++;
+
+                if (this.isChomp) {
+                    if (this.chompState === 'idle') {
+                        let closestAlien = null;
+                        let minDist = Infinity;
+                        
+                        for (let i = 0; i < attackers.length; i++) {
+                            let alien = attackers[i];
+                            if (alien.y === this.y) {
+                                let dist = alien.x - this.x; 
+                                // Allows eating aliens slightly behind it or up to 1.5 blocks in front
+                                if (dist >= -CELL_SIZE/2 && dist < minDist) {
+                                    minDist = dist;
+                                    closestAlien = alien;
+                                }
+                            }
+                        }
+                        
+                        // If closest alien is within 1.5 grid spaces, instantly eat it!
+                        if (closestAlien && minDist <= CELL_SIZE * 1.5) { 
+                            closestAlien.health = 0; // Triggers immediate death/score in the attacker loop
+                            this.chompState = 'digesting';
+                            this.digestTimer = 480; // 8 seconds of digestion at 60fps
+                            SoundEngine.death(); // Play a sound for eating
+                            floatingTexts.push(new FloatingText(this.x + CELL_SIZE/2, this.y, "CHOMP!", "132, 204, 22"));
+                        }
+                    } else if (this.chompState === 'digesting') {
+                        this.digestTimer--;
+                        if (this.digestTimer <= 0) {
+                            this.chompState = 'idle';
+                        }
+                    }
+                }
 
                 if (this.isSquash) {
                     if (this.squashState === 'idle') {
@@ -1720,6 +1795,13 @@
                         <rect x="-18" y="-8" width="20" height="3" fill="#e0f2fe"/>
                     </svg>
                 </div>`;
+            } else if (bot.id === 15) { // Chomp Bot Custom Graphic
+                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; transform:scale(-1,1); vertical-align:middle;">
+                    <svg viewBox="-20 -20 40 40" width="100%" height="100%">
+                        <path d="M 0 0 L 16 -8 A 18 18 0 1 0 16 8 Z" fill="#84cc16" />
+                        <circle cx="3" cy="-8" r="3" fill="#020617" />
+                    </svg>
+                </div>`;
             }
             // Standard symbol
             return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
@@ -1786,8 +1868,8 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // If Freeze Bot, use a deep frosty blue background instead of standard dark grey
-                ctx.fillStyle = card.id === 14 ? "#082f49" : "#1e293b"; 
+                // If Freeze Bot, use a deep frosty blue background. If Chomp bot, use dark green.
+                ctx.fillStyle = card.id === 14 ? "#082f49" : (card.id === 15 ? "#14532d" : "#1e293b"); 
                 ctx.beginPath();
                 ctx.roundRect(x, y, cardWidth, cardHeight, 8);
                 ctx.fill();
@@ -1856,6 +1938,18 @@
                     ctx.fillStyle = "#e0f2fe"; 
                     ctx.fillRect(-18, -8, 20, 3);
 
+                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
+                    ctx.scale(-1, 1);
+                    ctx.fillStyle = card.color;
+                    ctx.beginPath();
+                    let mouthAngle = 0.2;
+                    ctx.arc(0, 0, 16, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+                    ctx.lineTo(0, 0);
+                    ctx.fill();
+                    ctx.fillStyle = "#020617";
+                    ctx.beginPath();
+                    ctx.arc(3, -7, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
                 } else { // Standard Graphic
                     if (card.id === 1) ctx.scale(-1, 1); 
                     ctx.fillStyle = card.color;
@@ -2231,10 +2325,16 @@
             if (level >= 13) unlockedBots.push(cardTypes.find(c => c.id === 12)); // Smash Bot
             if (level >= 14) unlockedBots.push(cardTypes.find(c => c.id === 13)); // Multi Bot
             if (level >= 15) unlockedBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
+            if (level >= 16) unlockedBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
             
             unlockedBots.forEach(bot => {
+                // Dynamically color the tile based on special IDs
+                let tileColor = 'rgba(15, 23, 42, 0.95)';
+                if (bot.id === 14) tileColor = 'rgba(12, 74, 110, 0.95)'; // Freeze Bot (blue)
+                if (bot.id === 15) tileColor = 'rgba(20, 83, 45, 0.95)'; // Chomp Bot (green)
+                
                 html += `
-                    <div class="manual-card" style="border-color: ${bot.color}; background: ${bot.id === 14 ? '#082f49' : 'rgba(15, 23, 42, 0.95)'};">
+                    <div class="manual-card" style="border-color: ${bot.color}; background: ${tileColor};">
                         <h3><span style="color:${bot.color}">${getBotSymbolHTML(bot, true)}</span> <span style="margin-left: 5px; color:#fff">${bot.name}</span></h3>
                         <p><strong>Cost:</strong> ${bot.cost > 0 ? bot.cost + ' ⚡' : 'Free'}</p>
                         <p><strong>Recharge:</strong> ${(bot.cooldown / 60).toFixed(1)}s</p>
@@ -2354,6 +2454,18 @@
                     ctx.fillRect(-28, -6, 6, 10);
                     ctx.fillStyle = "#e0f2fe"; 
                     ctx.fillRect(-24, -10, 26, 4);
+                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
+                    ctx.scale(-1, 1);
+                    ctx.fillStyle = card.color;
+                    ctx.beginPath();
+                    let mouthAngle = 0.2;
+                    ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+                    ctx.lineTo(0, 0);
+                    ctx.fill();
+                    ctx.fillStyle = "#020617";
+                    ctx.beginPath();
+                    ctx.arc(3, -9, 3, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     ctx.font = "40px Arial";
                     if (card.id === 1) ctx.scale(-1, 1); 
@@ -2457,7 +2569,8 @@
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
             if (level >= 13) pickableBots.push(cardTypes.find(c => c.id === 12));
             if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13));
-            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
+            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); 
+            if (level >= 16) pickableBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -2520,7 +2633,8 @@
             if (level >= 12) pickableBots.push(cardTypes.find(c => c.id === 11));
             if (level >= 13) pickableBots.push(cardTypes.find(c => c.id === 12));
             if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13));
-            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
+            if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14));
+            if (level >= 16) pickableBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
@@ -2530,8 +2644,13 @@
                 if (i < currentLoadout.length) {
                     let botId = currentLoadout[i];
                     let bot = cardTypes.find(c => c.id === botId);
+                    
+                    let tileColor = '#1e293b';
+                    if (bot.id === 14) tileColor = '#082f49';
+                    if (bot.id === 15) tileColor = '#14532d';
+
                     slotDiv.style.border = `2px solid ${bot.color}`;
-                    slotDiv.style.background = bot.id === 14 ? '#082f49' : '#1e293b';
+                    slotDiv.style.background = tileColor;
                     
                     slotDiv.innerHTML = `
                         <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
@@ -2558,8 +2677,13 @@
                 let isSelected = currentLoadout.includes(bot.id);
                 let cardDiv = document.createElement('div');
                 cardDiv.className = 'loadout-card' + (isSelected ? ' selected' : ' hoverable');
+                
+                let tileColor = '#1e293b';
+                if (bot.id === 14) tileColor = '#082f49';
+                if (bot.id === 15) tileColor = '#14532d';
+
                 cardDiv.style.border = `2px solid ${bot.color}`;
-                cardDiv.style.background = bot.id === 14 ? '#082f49' : '#1e293b';
+                cardDiv.style.background = tileColor;
                 
                 cardDiv.innerHTML = `
                     <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
