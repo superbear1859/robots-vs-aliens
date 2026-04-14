@@ -321,7 +321,7 @@
             line-height: 1.4 !important;
         }
 
-        #passcodeInput {
+        #passcodeInput, #levelSkipInput {
             padding: 15px;
             font-size: 1.5vw;
             font-family: 'Orbitron', sans-serif;
@@ -381,7 +381,7 @@
             
             #splashText { font-size: calc(var(--vh, 1vh) * 6) !important; }
             
-            #passcodeInput { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5); margin-bottom: calc(var(--vh, 1vh) * 2); }
+            #passcodeInput, #levelSkipInput { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #passcodeError { font-size: calc(var(--vh, 1vh) * 3); height: calc(var(--vh, 1vh) * 3); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #adminMenuBtn { top: calc(var(--vh, 1vh) * 1.5) !important; left: calc(var(--vh, 1vh) * 2) !important; padding: calc(var(--vh, 1vh) * 0.8) calc(var(--vh, 1vh) * 1.5) !important; font-size: calc(var(--vh, 1vh) * 2.2) !important;}
         }
@@ -476,6 +476,7 @@
             <h1 id="passcodeTitle" style="font-size: 3vw; margin-bottom: 10px;">Admin Override</h1>
             <p id="passcodeDesc">Enter passcode to bypass this sector.</p>
             <input type="text" id="passcodeInput" placeholder="Enter Passcode" autocomplete="off" spellcheck="false">
+            <input type="number" id="levelSkipInput" class="hidden" placeholder="Target Level" min="1" autocomplete="off">
             <div id="passcodeError"></div>
             <div class="button-group">
                 <button id="cancelPasscodeBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b);">Cancel</button>
@@ -1936,24 +1937,39 @@
                     ctx.fillStyle = "#e0f2fe"; 
                     ctx.fillRect(-18, -8, 20, 3);
 
-                } else if (card.id === 15) { // Chomp Bot Custom Graphic UI
+                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
                     ctx.fillStyle = card.color;
                     ctx.beginPath();
                     let mouthAngle = 0.2;
-                    ctx.arc(0, 0, 16, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+                    if (this.chompState === 'idle') {
+                        mouthAngle = 0.05 + Math.abs(Math.sin(frame * 0.1)) * 0.25;
+                    } else if (this.chompState === 'digesting') {
+                        mouthAngle = 0.02; // Closed while digesting
+                    }
+                    ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
                     ctx.lineTo(0, 0);
                     ctx.fill();
+
                     ctx.fillStyle = "#020617";
                     ctx.beginPath();
-                    ctx.arc(3, -7, 2.5, 0, Math.PI * 2);
+                    ctx.arc(3, -9, 3, 0, Math.PI * 2);
                     ctx.fill();
-                } else { // Standard Graphic
-                    if (card.id === 1) ctx.scale(-1, 1); 
-                    ctx.fillStyle = card.color;
-                    ctx.font = "26px Arial";
+
+                    if (this.chompState === 'digesting') {
+                        ctx.fillStyle = "#bef264";
+                        ctx.font = "bold 14px Orbitron";
+                        let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
+                        ctx.fillText(dots, 0, -25);
+                    }
+                } else { // Standard Graphic behavior
+                    if (this.card.id === 1) {
+                        ctx.scale(-1, 1); 
+                    }
+                    ctx.fillStyle = this.card.color;
+                    ctx.font = "30px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillText(card.symbol, 0, 0);
+                    ctx.fillText(this.card.symbol, 0, 0);
                 }
                 
                 ctx.restore();
@@ -2793,9 +2809,11 @@
             adminScreen.classList.add('hidden');
             passcodeAction = 'skip';
             document.getElementById('passcodeTitle').innerText = 'Admin Override';
-            document.getElementById('passcodeDesc').innerText = 'Enter passcode to bypass this sector.';
+            document.getElementById('passcodeDesc').innerText = 'Enter passcode and target level to bypass.';
             document.getElementById('passcodeScreen').classList.remove('hidden');
             document.getElementById('passcodeInput').value = '';
+            document.getElementById('levelSkipInput').value = level + 1;
+            document.getElementById('levelSkipInput').classList.remove('hidden');
             document.getElementById('passcodeError').innerText = '';
             document.getElementById('passcodeInput').focus();
         });
@@ -2807,6 +2825,7 @@
             document.getElementById('passcodeDesc').innerText = 'Enter passcode to earn 2000 points.';
             document.getElementById('passcodeScreen').classList.remove('hidden');
             document.getElementById('passcodeInput').value = '';
+            document.getElementById('levelSkipInput').classList.add('hidden');
             document.getElementById('passcodeError').innerText = '';
             document.getElementById('passcodeInput').focus();
         });
@@ -2822,6 +2841,10 @@
             
             if (passcodeAction === 'skip') {
                 if (input === "superbear1859yyyyy") {
+                    let targetLevel = parseInt(document.getElementById('levelSkipInput').value);
+                    if (isNaN(targetLevel) || targetLevel < 1) targetLevel = level + 1;
+                    level = targetLevel - 1; // set it so completeLevel() advances it to target
+                    
                     document.getElementById('passcodeScreen').classList.add('hidden');
                     completeLevel(); // Triggers the level complete sequence instantly
                 } else {
