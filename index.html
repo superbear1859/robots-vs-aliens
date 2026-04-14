@@ -1772,6 +1772,7 @@
 
         // Helper function to build HTML icons for the menus
         function getBotSymbolHTML(bot, isManual = false) {
+            if (!bot) return '';
             let baseSize = isManual ? 28 : 26;
             if (bot.id === 9) { // Double Bot stacked guns
                 return `<div style="display: inline-flex; flex-direction: column; line-height: 0.9; font-size: ${baseSize * 0.65}px; transform: scale(-1, 1); vertical-align: middle;"><span>🔫</span><span>🔫</span></div>`;
@@ -1829,19 +1830,25 @@
             ctx.fillStyle = "#ef4444";
             ctx.fillText(`Level: ${level} | Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 15);
 
-            // Shrunk UI slightly to easily fit 8 total cards
             let cardStartX = 140;
             let cardWidth = 75;
             let cardHeight = 85;
             let cardGap = 8;
 
-            let availableCards = currentLoadout.map(id => cardTypes.find(c => c.id === id));
+            let availableCards = [];
+            for (let id of currentLoadout) {
+                let found = cardTypes.find(c => c && c.id === id);
+                if (found) availableCards.push(found);
+            }
+            
             if (level >= 6) {
-                availableCards.push(cardTypes.find(c => c.id === 6)); // Drill tool automatically added if unlocked
+                let drill = cardTypes.find(c => c && c.id === 6); // Drill tool automatically added if unlocked
+                if (drill) availableCards.push(drill); 
             }
 
             for (let i = 0; i < availableCards.length; i++) {
                 let card = availableCards[i];
+                if (!card) continue; // Robust null-check
                 
                 if (card.currentCooldown > 0) {
                     card.currentCooldown--;
@@ -1962,14 +1969,14 @@
                         ctx.fillText(dots, 0, -25);
                     }
                 } else { // Standard Graphic behavior
-                    if (this.card.id === 1) {
+                    if (card.id === 1) {
                         ctx.scale(-1, 1); 
                     }
-                    ctx.fillStyle = this.card.color;
+                    ctx.fillStyle = card.color;
                     ctx.font = "30px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillText(this.card.symbol, 0, 0);
+                    ctx.fillText(card.symbol, 0, 0);
                 }
                 
                 ctx.restore();
@@ -2036,7 +2043,13 @@
                         }
                     }
 
-                    let card = cardTypes.find(c => c.id === selectedCardType);
+                    let card = cardTypes.find(c => c && c.id === selectedCardType);
+                    if (!card) {
+                        selectedCardType = null;
+                        mouse.clicked = false;
+                        mouse.dropped = false;
+                        return;
+                    }
 
                     if (selectedCardType === 6) { // Dig Tool interaction
                         if (defenderIndex !== -1) {
@@ -2431,7 +2444,9 @@
 
         function drawCursorPreview() {
             if (selectedCardType !== null && mouse.x !== undefined && mouse.y !== undefined) {
-                let card = cardTypes.find(c => c.id === selectedCardType);
+                let card = cardTypes.find(c => c && c.id === selectedCardType);
+                if (!card) return;
+                
                 ctx.save();
                 ctx.globalAlpha = 0.5; 
                 ctx.textAlign = "center";
@@ -2655,26 +2670,28 @@
                 
                 if (i < currentLoadout.length) {
                     let botId = currentLoadout[i];
-                    let bot = cardTypes.find(c => c.id === botId);
+                    let bot = cardTypes.find(c => c && c.id === botId);
                     
-                    let tileColor = '#1e293b';
-                    if (bot.id === 14) tileColor = '#082f49';
-                    if (bot.id === 15) tileColor = '#14532d';
+                    if (bot) {
+                        let tileColor = '#1e293b';
+                        if (bot.id === 14) tileColor = '#082f49';
+                        if (bot.id === 15) tileColor = '#14532d';
 
-                    slotDiv.style.border = `2px solid ${bot.color}`;
-                    slotDiv.style.background = tileColor;
-                    
-                    slotDiv.innerHTML = `
-                        <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
-                            ${getBotSymbolHTML(bot)}
-                        </div>
-                        <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
-                        <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
-                    `;
-                    slotDiv.onclick = () => {
-                        currentLoadout.splice(i, 1);
-                        renderLoadout();
-                    };
+                        slotDiv.style.border = `2px solid ${bot.color}`;
+                        slotDiv.style.background = tileColor;
+                        
+                        slotDiv.innerHTML = `
+                            <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                ${getBotSymbolHTML(bot)}
+                            </div>
+                            <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
+                            <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
+                        `;
+                        slotDiv.onclick = () => {
+                            currentLoadout.splice(i, 1);
+                            renderLoadout();
+                        };
+                    }
                 } else {
                     slotDiv.style.border = '2px dashed #475569';
                     slotDiv.style.background = 'transparent';
@@ -2686,6 +2703,7 @@
 
             // Render bottom available pool
             pickableBots.forEach(bot => {
+                if (!bot) return;
                 let isSelected = currentLoadout.includes(bot.id);
                 let cardDiv = document.createElement('div');
                 cardDiv.className = 'loadout-card' + (isSelected ? ' selected' : ' hoverable');
