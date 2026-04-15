@@ -383,7 +383,7 @@
             
             #passcodeInput, #levelSkipInput { font-size: calc(var(--vh, 1vh) * 4); padding: calc(var(--vh, 1vh) * 1.5); margin-bottom: calc(var(--vh, 1vh) * 2); }
             #passcodeError { font-size: calc(var(--vh, 1vh) * 3); height: calc(var(--vh, 1vh) * 3); margin-bottom: calc(var(--vh, 1vh) * 2); }
-            #adminMenuBtn { top: calc(var(--vh, 1vh) * 1.5) !important; left: calc(var(--vh, 1vh) * 2) !important; padding: calc(var(--vh, 1vh) * 0.8) calc(var(--vh, 1vh) * 1.5) !important; font-size: calc(var(--vh, 1vh) * 2.2) !important;}
+            #adminMenuBtn { top: calc(var(--vh, 1vh) * 1.5) !important; left: calc(var(--vh, 1vh) * 2) !important; padding: calc(var(--vh, 1vh) * 1.5) calc(var(--vh, 1vh) * 2) !important; font-size: calc(var(--vh, 1vh) * 3.5) !important; min-width: 0 !important; width: auto !important;}
         }
 
         @media (max-width: 800px) and (min-height: 601px) {
@@ -413,7 +413,7 @@
             <svg id="fsIconEnter" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
             <svg id="fsIconExit" style="display: none;" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
         </button>
-        <button id="adminMenuBtn" class="in-game-btn hidden-btn" style="top: 15px; left: 20px; bottom: auto; right: auto; width: auto; padding: 5px 15px; font-size: 16px;">Settings</button>
+        <button id="adminMenuBtn" class="in-game-btn hidden-btn" style="top: 5px; left: 5px; bottom: auto; right: auto; width: auto; min-width: 0; padding: 10px 15px; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;">⚙</button>
         
         <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
             <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
@@ -1839,9 +1839,10 @@
             ctx.fillStyle = "#fff";
             ctx.font = "20px Orbitron";
             ctx.textAlign = "right";
-            ctx.fillText(`Score: ${score}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 - 15);
+            ctx.fillText(`Score: ${score}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 - 25);
             ctx.fillStyle = "#ef4444";
-            ctx.fillText(`Level: ${level} | Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 15);
+            ctx.fillText(`Level: ${level}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2);
+            ctx.fillText(`Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 25);
 
             let cardStartX = 140;
             let cardWidth = 75;
