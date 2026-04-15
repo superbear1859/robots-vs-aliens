@@ -718,8 +718,8 @@
             { id: 4, name: "Bomb Bot", cost: 150, color: "#ef4444", symbol: "💣", desc: "Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 5, name: "Mine Bot", cost: 25, color: "#f97316", symbol: "🖲️", desc: "Explodes on Contact", hp: 100, fireRate: 0, cooldown: 1200, currentCooldown: 0 },
             { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 },
-            { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "📌", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
-            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "📍", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
+            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 9, name: "Double Bot", cost: 200, color: "#0ea5e9", symbol: "♊", desc: "Fires two shots", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 },
@@ -741,6 +741,355 @@
             { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 },
             { type: 'berserker', hp: 800, speed: 0.25, damage: 3.0, color: '#ea580c', radius: 38, score: 120 }
         ];
+
+        // --- Custom Bot Canvas Drawing Functions ---
+        // Each function draws centered at (0,0). Caller must ctx.save() + ctx.translate(cx,cy) first.
+        // s = scale (1.0 for grid, ~0.65 for cards), extra params vary by bot.
+        const BotGraphics = {
+            // Reusable gun turret component - barrel points RIGHT
+            drawGun: function(ctx, s, color, offsetY) {
+                offsetY = offsetY || 0;
+                ctx.save();
+                ctx.translate(0, offsetY);
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-6*s, -7*s, 12*s, 14*s, 2*s);
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5*s;
+                ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.roundRect(4*s, -3*s, 14*s, 6*s, 1*s);
+                ctx.fill();
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillRect(16*s, -2*s, 3*s, 4*s);
+                ctx.restore();
+            },
+            // 0: Battery Bot - Energy generator
+            0: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#1c1917";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, -11*s, 20*s, 22*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#facc15";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.roundRect(-4*s, -14*s, 8*s, 5*s, 1*s);
+                ctx.fill();
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.moveTo(3*s, -6*s);
+                ctx.lineTo(-3*s, 1*s);
+                ctx.lineTo(1*s, 1*s);
+                ctx.lineTo(-3*s, 8*s);
+                ctx.lineTo(3*s, -1*s);
+                ctx.lineTo(-1*s, -1*s);
+                ctx.closePath();
+                ctx.fill();
+            },
+            // 1: Blaster Bot - Basic attack turret
+            1: function(ctx, s) {
+                s = s || 1;
+                BotGraphics.drawGun(ctx, s, "#38bdf8", 0);
+                ctx.fillStyle = "#7dd3fc";
+                ctx.beginPath();
+                ctx.arc(10*s, -5*s, 2*s, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            // 2: Shield Bot - Armored shield
+            2: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#475569";
+                ctx.beginPath();
+                ctx.moveTo(0, -14*s);
+                ctx.lineTo(12*s, -8*s);
+                ctx.lineTo(12*s, 5*s);
+                ctx.lineTo(0, 14*s);
+                ctx.lineTo(-12*s, 5*s);
+                ctx.lineTo(-12*s, -8*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineWidth = 2.5*s;
+                ctx.stroke();
+                ctx.strokeStyle = "#cbd5e1";
+                ctx.lineWidth = 2*s;
+                ctx.beginPath();
+                ctx.moveTo(-8*s, 0);
+                ctx.lineTo(8*s, 0);
+                ctx.moveTo(0, -10*s);
+                ctx.lineTo(0, 10*s);
+                ctx.stroke();
+            },
+            // 3: Plasma Bot - Heavy cannon with energy core
+            3: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#581c87";
+                ctx.beginPath();
+                ctx.roundRect(2*s, -5*s, 16*s, 10*s, 2*s);
+                ctx.fill();
+                ctx.fillStyle = "#3b0764";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, -10*s, 16*s, 20*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#a855f7";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#c084fc";
+                ctx.beginPath();
+                ctx.arc(-2*s, 0, 5*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#f0abfc";
+                ctx.beginPath();
+                ctx.arc(-2*s, 0, 2*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#d8b4fe";
+                ctx.beginPath();
+                ctx.arc(18*s, 0, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            // 4: Bomb Bot - Round bomb with fuse
+            4: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#1c1917";
+                ctx.beginPath();
+                ctx.arc(0, 2*s, 11*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#ef4444";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.strokeStyle = "#a8a29e";
+                ctx.lineWidth = 2*s;
+                ctx.beginPath();
+                ctx.moveTo(5*s, -8*s);
+                ctx.quadraticCurveTo(10*s, -14*s, 5*s, -16*s);
+                ctx.stroke();
+                ctx.fillStyle = "#fbbf24";
+                ctx.beginPath();
+                ctx.arc(5*s, -16*s, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#ef4444";
+                ctx.font = `bold ${10*s}px Orbitron`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("!", 0, 3*s);
+            },
+            // 5: Mine Bot - Disc with trigger prongs
+            5: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#431407";
+                ctx.beginPath();
+                ctx.arc(0, 0, 10*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#f97316";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#f97316";
+                for (let i = 0; i < 4; i++) {
+                    ctx.save();
+                    ctx.rotate(i * Math.PI / 2 + Math.PI / 4);
+                    ctx.beginPath();
+                    ctx.moveTo(-3*s, -10*s);
+                    ctx.lineTo(0, -15*s);
+                    ctx.lineTo(3*s, -10*s);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+                ctx.fillStyle = "#fb923c";
+                ctx.beginPath();
+                ctx.arc(0, 0, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            // 6: Dig Tool - Wrench shape
+            6: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#475569";
+                ctx.beginPath();
+                ctx.roundRect(-2*s, 0, 4*s, 14*s, 1*s);
+                ctx.fill();
+                ctx.fillStyle = "#94a3b8";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, -10*s, 8*s, 14*s, 2*s);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.roundRect(2*s, -10*s, 8*s, 14*s, 2*s);
+                ctx.fill();
+                ctx.fillStyle = "#0f172a";
+                ctx.beginPath();
+                ctx.roundRect(-3*s, -12*s, 6*s, 10*s, 1*s);
+                ctx.fill();
+            },
+            // 7: Spike Bot icon (grid uses separate custom spike animation)
+            7: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#10b981";
+                ctx.beginPath();
+                ctx.moveTo(0, -12*s);
+                ctx.lineTo(-6*s, 6*s);
+                ctx.lineTo(6*s, 6*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = "#065f46";
+                ctx.beginPath();
+                ctx.roundRect(-8*s, 6*s, 16*s, 5*s, 1*s);
+                ctx.fill();
+            },
+            // 8: Mega Spike icon
+            8: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#22d3ee";
+                ctx.beginPath();
+                ctx.moveTo(0, -14*s);
+                ctx.lineTo(-7*s, 4*s);
+                ctx.lineTo(7*s, 4*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(-11*s, -4*s);
+                ctx.lineTo(-5*s, 4*s);
+                ctx.lineTo(-3*s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(11*s, -4*s);
+                ctx.lineTo(5*s, 4*s);
+                ctx.lineTo(3*s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = "#164e63";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, 4*s, 20*s, 5*s, 1*s);
+                ctx.fill();
+            },
+            // 9: Double Bot - Two guns stacked
+            9: function(ctx, s) {
+                s = s || 1;
+                BotGraphics.drawGun(ctx, s * 0.9, "#0ea5e9", -8*s);
+                BotGraphics.drawGun(ctx, s * 0.9, "#0ea5e9", 8*s);
+            },
+            // 10: Triple Bot - Three guns stacked
+            10: function(ctx, s) {
+                s = s || 1;
+                BotGraphics.drawGun(ctx, s * 0.75, "#818cf8", -11*s);
+                BotGraphics.drawGun(ctx, s * 0.75, "#818cf8", 0);
+                BotGraphics.drawGun(ctx, s * 0.75, "#818cf8", 11*s);
+            },
+            // 11: Mega Shield - Enhanced shield with aura
+            11: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "rgba(96, 165, 250, 0.25)";
+                ctx.beginPath();
+                ctx.moveTo(0, -16*s);
+                ctx.lineTo(14*s, -10*s);
+                ctx.lineTo(14*s, 6*s);
+                ctx.lineTo(0, 16*s);
+                ctx.lineTo(-14*s, 6*s);
+                ctx.lineTo(-14*s, -10*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = "#1e3a5f";
+                ctx.beginPath();
+                ctx.moveTo(0, -12*s);
+                ctx.lineTo(10*s, -7*s);
+                ctx.lineTo(10*s, 4*s);
+                ctx.lineTo(0, 12*s);
+                ctx.lineTo(-10*s, 4*s);
+                ctx.lineTo(-10*s, -7*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "#60a5fa";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#93c5fd";
+                ctx.beginPath();
+                ctx.moveTo(0, -5*s);
+                ctx.lineTo(5*s, 0);
+                ctx.lineTo(0, 5*s);
+                ctx.lineTo(-5*s, 0);
+                ctx.closePath();
+                ctx.fill();
+            },
+            // 12: Smash Bot - Mechanical hammer/fist
+            12: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#9f1239";
+                ctx.beginPath();
+                ctx.roundRect(-2*s, 2*s, 4*s, 12*s, 1*s);
+                ctx.fill();
+                ctx.fillStyle = "#e11d48";
+                ctx.beginPath();
+                ctx.roundRect(-11*s, -12*s, 22*s, 16*s, 4*s);
+                ctx.fill();
+                ctx.strokeStyle = "#f43f5e";
+                ctx.lineWidth = 1.5*s;
+                ctx.stroke();
+                ctx.fillStyle = "#fda4af";
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.roundRect((i*7 - 2)*s, -9*s, 4*s, 9*s, 1*s);
+                    ctx.fill();
+                }
+            },
+            // 13: Multi Bot - Dynamic gun count
+            13: function(ctx, s, count) {
+                s = s || 1;
+                count = count || 1;
+                const positions = [
+                    [],
+                    [{x: 0, y: 0}],
+                    [{x: 0, y: -9}, {x: 0, y: 9}],
+                    [{x: 0, y: -12}, {x: 0, y: 0}, {x: 0, y: 12}],
+                    [{x: -8, y: -8}, {x: 8, y: -8}, {x: -8, y: 8}, {x: 8, y: 8}],
+                    [{x: -10, y: -10}, {x: 10, y: -10}, {x: 0, y: 0}, {x: -10, y: 10}, {x: 10, y: 10}]
+                ];
+                let pos = positions[Math.min(count, 5)];
+                for (let i = 0; i < pos.length; i++) {
+                    ctx.save();
+                    ctx.translate(pos[i].x * s, pos[i].y * s);
+                    BotGraphics.drawGun(ctx, s * 0.45, "#f472b6", 0);
+                    ctx.restore();
+                }
+            },
+            // 14: Freeze Bot (static version - Defender.draw has animated override)
+            14: function(ctx, s) {
+                s = s || 1;
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.fillStyle = "#2563eb";
+                ctx.beginPath();
+                ctx.roundRect(-3*s, 0, 10*s, 18*s, 2*s);
+                ctx.fill();
+                ctx.fillStyle = "#60a5fa";
+                ctx.beginPath();
+                ctx.roundRect(-18*s, -8*s, 25*s, 13*s, 3*s);
+                ctx.fill();
+                ctx.fillStyle = "#bae6fd";
+                ctx.beginPath();
+                ctx.roundRect(-21*s, -5*s, 5*s, 8*s, 1*s);
+                ctx.fill();
+                ctx.fillStyle = "#e0f2fe";
+                ctx.fillRect(-18*s, -8*s, 20*s, 3*s);
+                ctx.restore();
+            },
+            // 15: Chomp Bot (static version - Defender.draw has animated override)
+            15: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#84cc16";
+                ctx.beginPath();
+                ctx.arc(0, 0, 18*s, 0.2 * Math.PI, (2 - 0.2) * Math.PI);
+                ctx.lineTo(0, 0);
+                ctx.fill();
+                ctx.fillStyle = "#020617";
+                ctx.beginPath();
+                ctx.arc(3*s, -9*s, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        };
 
         let canvasRect = canvas.getBoundingClientRect();
         
@@ -1108,11 +1457,6 @@
                     }
                     
                     ctx.shadowBlur = 0;
-                    ctx.fillStyle = this.card.color;
-                    ctx.font = "16px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(this.card.symbol, cx, drawY + this.height - 7);
                 } else {
                     // Normal Bot Drawing
                     ctx.beginPath();
@@ -1147,74 +1491,14 @@
                     ctx.save();
                     ctx.translate(cx, cy);
                     
-                    if (this.card.id === 9) { // Custom Double Bot Graphic (Two Guns Stacked)
-                        ctx.scale(-1, 1); 
-                        ctx.fillStyle = this.card.color;
-                        ctx.font = "22px Arial";
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        ctx.fillText("🔫", 0, -10);
-                        ctx.fillText("🔫", 0, 12);
-                    } else if (this.card.id === 10) { // Custom Triple Bot Graphic (Three Guns Stacked)
-                        ctx.scale(-1, 1); 
-                        ctx.fillStyle = this.card.color;
-                        ctx.font = "18px Arial";
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        ctx.fillText("🔫", 0, -16);
-                        ctx.fillText("🔫", 0, 0);
-                        ctx.fillText("🔫", 0, 16);
-                    } else if (this.card.id === 13) { // Multi Bot logic (up to 5 mini guns in a quincunx pattern)
-                        ctx.scale(-1, 1);
-                        ctx.fillStyle = this.card.color;
-                        ctx.font = "16px Arial";
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        const positions = [
-                            [], // 0
-                            [{x: 0, y: 0}], // 1
-                            [{x: 0, y: -12}, {x: 0, y: 12}], // 2
-                            [{x: 0, y: -16}, {x: 0, y: 0}, {x: 0, y: 16}], // 3
-                            [{x: -12, y: -12}, {x: 12, y: -12}, {x: -12, y: 12}, {x: 12, y: 12}], // 4
-                            [{x: -14, y: -14}, {x: 14, y: -14}, {x: 0, y: 0}, {x: -14, y: 14}, {x: 14, y: 14}] // 5
-                        ];
-                        let pos = positions[this.multiCount];
-                        for (let k = 0; k < pos.length; k++) {
-                            ctx.fillText("🔫", pos[k].x, pos[k].y);
-                        }
-                    } else if (this.card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
-                        ctx.scale(-1, 1); 
-                        
-                        // Handle
-                        ctx.fillStyle = "#2563eb"; 
-                        ctx.beginPath();
-                        ctx.roundRect(-3, 0, 10, 18, 2);
-                        ctx.fill();
-                        
-                        // Barrel
-                        ctx.fillStyle = "#60a5fa"; 
-                        ctx.beginPath();
-                        ctx.roundRect(-18, -8, 25, 13, 3);
-                        ctx.fill();
-                        
-                        // Ice Nozzle
-                        ctx.fillStyle = "#bae6fd"; 
-                        ctx.beginPath();
-                        ctx.roundRect(-21, -5, 5, 8, 1);
-                        ctx.fill();
-                        
-                        // Top Highlight Strip
-                        ctx.fillStyle = "#e0f2fe"; 
-                        ctx.fillRect(-18, -8, 20, 3);
-
-                    } else if (this.card.id === 15) { // Chomp Bot Custom Inside Graphic
+                    if (this.card.id === 15) { // Chomp Bot - animated mouth
                         ctx.fillStyle = this.card.color;
                         ctx.beginPath();
                         let mouthAngle = 0.2;
                         if (this.chompState === 'idle') {
                             mouthAngle = 0.05 + Math.abs(Math.sin(frame * 0.1)) * 0.25;
                         } else if (this.chompState === 'digesting') {
-                            mouthAngle = 0.02; // Closed while digesting
+                            mouthAngle = 0.02;
                         }
                         ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
                         ctx.lineTo(0, 0);
@@ -1231,15 +1515,8 @@
                             let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
                             ctx.fillText(dots, 0, -25);
                         }
-                    } else { // Standard Graphic behavior
-                        if (this.card.id === 1) {
-                            ctx.scale(-1, 1); 
-                        }
-                        ctx.fillStyle = this.card.color;
-                        ctx.font = "30px Arial";
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        ctx.fillText(this.card.symbol, 0, 0);
+                    } else if (BotGraphics[this.card.id]) {
+                        BotGraphics[this.card.id](ctx, 1, this.card.id === 13 ? this.multiCount : undefined);
                     }
                     
                     ctx.restore();
@@ -1519,13 +1796,70 @@
                 ctx.beginPath();
                 if (this.type === 'scout') {
                     ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner highlight ring
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, this.radius * 0.65, 0, Math.PI * 2);
+                    ctx.fillStyle = currentColor + "22";
+                    ctx.fill();
+                    // Antenna nubs
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.arc(cx - 6, cy - this.radius + 2, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(cx + 6, cy - this.radius + 2, 3, 0, Math.PI * 2);
+                    ctx.fill();
                 } else if (this.type === 'brute') {
                     ctx.roundRect(cx - this.radius, cy - this.radius, this.radius*2, this.radius*2, 15);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Armor plate lines
+                    ctx.strokeStyle = currentColor + "44";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - this.radius + 8, cy - this.radius + 6);
+                    ctx.lineTo(cx + this.radius - 8, cy - this.radius + 6);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - this.radius + 5, cy + this.radius - 8);
+                    ctx.lineTo(cx + this.radius - 5, cy + this.radius - 8);
+                    ctx.stroke();
+                    // Corner rivets
+                    ctx.fillStyle = currentColor;
+                    let cr = this.radius - 7;
+                    for (let dx of [-1, 1]) {
+                        for (let dy of [-1, 1]) {
+                            ctx.beginPath();
+                            ctx.arc(cx + dx * cr, cy + dy * cr, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
                 } else if (this.type === 'runner') {
                     ctx.moveTo(cx + this.radius, cy + this.radius);
                     ctx.lineTo(cx - this.radius, cy);
                     ctx.lineTo(cx + this.radius, cy - this.radius);
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Speed streaks
+                    ctx.strokeStyle = currentColor + "66";
+                    ctx.lineWidth = 1.5;
+                    for (let i = -1; i <= 1; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(cx + this.radius + 4, cy + i * 8);
+                        ctx.lineTo(cx + this.radius + 12, cy + i * 8);
+                        ctx.stroke();
+                    }
+                    // Inner triangle highlight
+                    ctx.fillStyle = currentColor + "18";
+                    ctx.beginPath();
+                    ctx.moveTo(cx + this.radius * 0.5, cy + this.radius * 0.5);
+                    ctx.lineTo(cx - this.radius * 0.4, cy);
+                    ctx.lineTo(cx + this.radius * 0.5, cy - this.radius * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
                 } else if (this.type === 'goliath') {
                     for (let i = 0; i < 6; i++) {
                         let angle = (Math.PI / 3) * i;
@@ -1535,14 +1869,75 @@
                         else ctx.lineTo(hx, hy);
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner hex ring
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        let angle = (Math.PI / 3) * i + Math.PI / 6;
+                        let hx = cx + this.radius * 0.55 * Math.cos(angle);
+                        let hy = cy + this.radius * 0.55 * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = currentColor + "44";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    // Crown/horn on top
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 5, cy - this.radius);
+                    ctx.lineTo(cx, cy - this.radius - 8);
+                    ctx.lineTo(cx + 5, cy - this.radius);
+                    ctx.closePath();
+                    ctx.fill();
                 } else if (this.type === 'stinger') {
                     ctx.moveTo(cx, cy - this.radius);
                     ctx.lineTo(cx + this.radius, cy);
                     ctx.lineTo(cx, cy + this.radius);
                     ctx.lineTo(cx - this.radius, cy);
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner diamond
+                    ctx.fillStyle = currentColor + "20";
+                    ctx.beginPath();
+                    let ir = this.radius * 0.5;
+                    ctx.moveTo(cx, cy - ir);
+                    ctx.lineTo(cx + ir, cy);
+                    ctx.lineTo(cx, cy + ir);
+                    ctx.lineTo(cx - ir, cy);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Stinger point at top
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 3, cy - this.radius);
+                    ctx.lineTo(cx, cy - this.radius - 6);
+                    ctx.lineTo(cx + 3, cy - this.radius);
+                    ctx.closePath();
+                    ctx.fill();
                 } else if (this.type === 'phantom') {
                     ctx.ellipse(cx, cy, this.radius, this.radius * 0.7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Wispy tendrils at bottom
+                    ctx.strokeStyle = currentColor + "55";
+                    ctx.lineWidth = 2;
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.beginPath();
+                        let tx = cx + i * 7;
+                        let ty = cy + this.radius * 0.5;
+                        ctx.moveTo(tx, ty);
+                        ctx.quadraticCurveTo(tx + Math.sin(this.frameX * 0.08 + i) * 5, ty + 8, tx + Math.sin(this.frameX * 0.12 + i) * 3, ty + 14);
+                        ctx.stroke();
+                    }
+                    // Ghost inner glow
+                    ctx.fillStyle = currentColor + "15";
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy - 2, this.radius * 0.5, this.radius * 0.35, 0, 0, Math.PI * 2);
+                    ctx.fill();
                 } else if (this.type === 'bulwark') {
                     for (let i = 0; i < 8; i++) {
                         let angle = (Math.PI / 4) * i + (Math.PI / 8);
@@ -1552,8 +1947,30 @@
                         else ctx.lineTo(hx, hy);
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Armor plating - inner octagon
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        let angle = (Math.PI / 4) * i + (Math.PI / 8);
+                        let hx = cx + this.radius * 0.65 * Math.cos(angle);
+                        let hy = cy + this.radius * 0.65 * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = currentColor + "44";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    // Bolt rivets on each vertex
+                    ctx.fillStyle = currentColor;
+                    for (let i = 0; i < 8; i++) {
+                        let angle = (Math.PI / 4) * i + (Math.PI / 8);
+                        ctx.beginPath();
+                        ctx.arc(cx + this.radius * 0.82 * Math.cos(angle), cy + this.radius * 0.82 * Math.sin(angle), 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 } else if (this.type === 'weaver') {
-                    // Uses a sine wave mapped to a circle to create rippling/morphing edges
                     for (let i = 0; i <= Math.PI * 2.01; i += Math.PI / 12) {
                         let r = this.radius * (0.75 + 0.25 * Math.sin(i * 4 + this.frameX * 0.1)); 
                         let hx = cx + r * Math.cos(i);
@@ -1562,8 +1979,22 @@
                         else ctx.lineTo(hx, hy);
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner morphing ring
+                    ctx.beginPath();
+                    for (let i = 0; i <= Math.PI * 2.01; i += Math.PI / 12) {
+                        let r = this.radius * 0.45 * (0.8 + 0.2 * Math.cos(i * 3 - this.frameX * 0.15));
+                        let hx = cx + r * Math.cos(i);
+                        let hy = cy + r * Math.sin(i);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = currentColor + "55";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
                 } else if (this.type === 'apex') {
-                    // 8-pointed star logic
                     for (let i = 0; i < 16; i++) {
                         let angle = (Math.PI / 8) * i;
                         let r = (i % 2 === 0) ? this.radius : this.radius * 0.55;
@@ -1573,8 +2004,33 @@
                         else ctx.lineTo(hx, hy);
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner star pulsing glow
+                    let pulse = 0.7 + Math.sin(this.frameX * 0.08) * 0.15;
+                    ctx.beginPath();
+                    for (let i = 0; i < 16; i++) {
+                        let angle = (Math.PI / 8) * i;
+                        let r = (i % 2 === 0) ? this.radius * 0.5 * pulse : this.radius * 0.28 * pulse;
+                        let hx = cx + r * Math.cos(angle);
+                        let hy = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = currentColor + "30";
+                    ctx.fill();
+                    // Crown spikes at top
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 4, cy - this.radius);
+                    ctx.lineTo(cx - 2, cy - this.radius - 5);
+                    ctx.lineTo(cx, cy - this.radius + 1);
+                    ctx.lineTo(cx + 2, cy - this.radius - 5);
+                    ctx.lineTo(cx + 4, cy - this.radius);
+                    ctx.closePath();
+                    ctx.fill();
                 } else if (this.type === 'berserker') {
-                    // Hexagon shape logic
                     for (let i = 0; i < 6; i++) {
                         let angle = (Math.PI / 3) * i;
                         let hx = cx + this.radius * Math.cos(angle);
@@ -1583,36 +2039,63 @@
                         else ctx.lineTo(hx, hy);
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Flame-like edge spikes
+                    ctx.fillStyle = currentColor;
+                    for (let i = 0; i < 6; i++) {
+                        let angle = (Math.PI / 3) * i + Math.PI / 6;
+                        let sx = cx + this.radius * 0.85 * Math.cos(angle);
+                        let sy = cy + this.radius * 0.85 * Math.sin(angle);
+                        let ex = cx + (this.radius + 6) * Math.cos(angle);
+                        let ey = cy + (this.radius + 6) * Math.sin(angle);
+                        ctx.beginPath();
+                        ctx.moveTo(sx - 3 * Math.sin(angle), sy + 3 * Math.cos(angle));
+                        ctx.lineTo(ex, ey);
+                        ctx.lineTo(sx + 3 * Math.sin(angle), sy - 3 * Math.cos(angle));
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    // Angry brow ridges (drawn before face below overrides)
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 14, cy - 10);
+                    ctx.lineTo(cx - 6, cy - 8);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 6, cy - 10);
+                    ctx.lineTo(cx - 2, cy - 8);
+                    ctx.stroke();
                 }
-                ctx.fill();
-                ctx.stroke();
-
                 ctx.shadowBlur = 0;
-                
+
+                // --- Shared cute face ---
+                // Cheeks
                 ctx.fillStyle = "rgba(255, 150, 180, 0.7)";
                 ctx.beginPath();
                 ctx.arc(cx - 14, cy + 2, 4, 0, Math.PI * 2);
                 ctx.arc(cx + 6, cy + 2, 4, 0, Math.PI * 2);
                 ctx.fill();
-
+                // Eye whites
                 ctx.fillStyle = "#fff";
                 ctx.beginPath();
                 ctx.arc(cx - 8, cy - 4, 6, 0, Math.PI * 2); 
                 ctx.arc(cx + 4, cy - 4, 6, 0, Math.PI * 2); 
                 ctx.fill();
-
+                // Pupils
                 ctx.fillStyle = "#020617";
                 ctx.beginPath();
                 ctx.arc(cx - 10, cy - 4, 3.5, 0, Math.PI * 2);
                 ctx.arc(cx + 2, cy - 4, 3.5, 0, Math.PI * 2);
                 ctx.fill();
-
+                // Eye highlights
                 ctx.fillStyle = "#fff";
                 ctx.beginPath();
                 ctx.arc(cx - 11, cy - 5.5, 1.5, 0, Math.PI * 2);
                 ctx.arc(cx + 1, cy - 5.5, 1.5, 0, Math.PI * 2);
                 ctx.fill();
-
+                // Smile
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -1786,38 +2269,159 @@
         // Helper function to build HTML icons for the menus
         function getBotSymbolHTML(bot, isManual = false) {
             if (!bot) return '';
-            let baseSize = isManual ? 28 : 26;
-            if (bot.id === 9) { // Double Bot stacked guns
-                return `<div style="display: inline-flex; flex-direction: column; line-height: 0.9; font-size: ${baseSize * 0.65}px; transform: scale(-1, 1); vertical-align: middle;"><span>🔫</span><span>🔫</span></div>`;
-            } else if (bot.id === 10) { // Triple Bot stacked guns
-                return `<div style="display: inline-flex; flex-direction: column; line-height: 0.8; font-size: ${baseSize * 0.55}px; transform: scale(-1, 1); vertical-align: middle;"><span>🔫</span><span>🔫</span><span>🔫</span></div>`;
-            } else if (bot.id === 13) { // Multi Bot dynamic cluster
-                return `<div style="position: relative; width: ${baseSize}px; height: ${baseSize}px; transform: scale(-1, 1); display: inline-block; vertical-align: middle;">
-                    <span style="position:absolute; top: 0; left: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
-                    <span style="position:absolute; top: 0; right: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
-                    <span style="position:absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: ${baseSize * 0.45}px;">🔫</span>
-                    <span style="position:absolute; bottom: 0; left: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
-                    <span style="position:absolute; bottom: 0; right: 0; font-size: ${baseSize * 0.45}px;">🔫</span>
-                </div>`;
-            } else if (bot.id === 14) { // Custom Hand-Drawn Freeze Blaster SVG
-                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; transform:scale(-1,1); vertical-align:middle;">
-                    <svg viewBox="-20 -10 30 28" width="100%" height="100%">
-                        <rect x="-3" y="0" width="10" height="18" fill="#2563eb" rx="2"/>
-                        <rect x="-18" y="-8" width="25" height="13" fill="#60a5fa" rx="3"/>
-                        <rect x="-21" y="-5" width="5" height="8" fill="#bae6fd" rx="1"/>
-                        <rect x="-18" y="-8" width="20" height="3" fill="#e0f2fe"/>
-                    </svg>
-                </div>`;
-            } else if (bot.id === 15) { // Chomp Bot Custom Graphic (No flip needed)
-                return `<div style="display:inline-block; width:${baseSize}px; height:${baseSize}px; vertical-align:middle;">
-                    <svg viewBox="-20 -20 40 40" width="100%" height="100%">
-                        <path d="M 0 0 L 16 -8 A 18 18 0 1 0 16 8 Z" fill="#84cc16" />
-                        <circle cx="3" cy="-8" r="3" fill="#020617" />
-                    </svg>
-                </div>`;
+            let s = isManual ? 28 : 26;
+            const wrap = (svg) => `<div style="display:inline-block; width:${s}px; height:${s}px; vertical-align:middle;"><svg viewBox="-22 -22 44 44" width="100%" height="100%">${svg}</svg></div>`;
+
+            switch(bot.id) {
+                case 0: // Battery Bot
+                    return wrap(`
+                        <rect x="-10" y="-11" width="20" height="22" rx="3" fill="#1c1917" stroke="#facc15" stroke-width="2"/>
+                        <rect x="-4" y="-14" width="8" height="5" rx="1" fill="#facc15"/>
+                        <path d="M3 -6 L-3 1 L1 1 L-3 8 L3 -1 L-1 -1 Z" fill="#facc15"/>
+                    `);
+                case 1: // Blaster Bot
+                    return wrap(`
+                        <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+                        <rect x="4" y="-3" width="14" height="6" rx="1" fill="#38bdf8"/>
+                        <rect x="16" y="-2" width="3" height="4" fill="#e2e8f0"/>
+                        <circle cx="10" cy="-5" r="2" fill="#7dd3fc"/>
+                    `);
+                case 2: // Shield Bot
+                    return wrap(`
+                        <path d="M0 -14 L12 -8 L12 5 L0 14 L-12 5 L-12 -8 Z" fill="#475569" stroke="#94a3b8" stroke-width="2.5"/>
+                        <line x1="-8" y1="0" x2="8" y2="0" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="0" y1="-10" x2="0" y2="10" stroke="#cbd5e1" stroke-width="2"/>
+                    `);
+                case 3: // Plasma Bot
+                    return wrap(`
+                        <rect x="2" y="-5" width="16" height="10" rx="2" fill="#581c87"/>
+                        <rect x="-10" y="-10" width="16" height="20" rx="3" fill="#3b0764" stroke="#a855f7" stroke-width="2"/>
+                        <circle cx="-2" cy="0" r="5" fill="#c084fc"/>
+                        <circle cx="-2" cy="0" r="2" fill="#f0abfc"/>
+                        <circle cx="18" cy="0" r="3" fill="#d8b4fe"/>
+                    `);
+                case 4: // Bomb Bot
+                    return wrap(`
+                        <circle cx="0" cy="2" r="11" fill="#1c1917" stroke="#ef4444" stroke-width="2"/>
+                        <path d="M5 -8 Q10 -14 5 -16" stroke="#a8a29e" stroke-width="2" fill="none"/>
+                        <circle cx="5" cy="-16" r="3" fill="#fbbf24"/>
+                        <text x="0" y="6" text-anchor="middle" fill="#ef4444" font-weight="bold" font-size="10" font-family="Orbitron">!</text>
+                    `);
+                case 5: // Mine Bot
+                    return wrap(`
+                        <circle cx="0" cy="0" r="10" fill="#431407" stroke="#f97316" stroke-width="2"/>
+                        <g fill="#f97316">
+                            <path d="M-3 -14 L0 -19 L3 -14 Z" transform="rotate(45)"/>
+                            <path d="M-3 -14 L0 -19 L3 -14 Z" transform="rotate(135)"/>
+                            <path d="M-3 -14 L0 -19 L3 -14 Z" transform="rotate(225)"/>
+                            <path d="M-3 -14 L0 -19 L3 -14 Z" transform="rotate(315)"/>
+                        </g>
+                        <circle cx="0" cy="0" r="3" fill="#fb923c"/>
+                    `);
+                case 6: // Dig Tool
+                    return wrap(`
+                        <rect x="-2" y="0" width="4" height="14" rx="1" fill="#475569"/>
+                        <rect x="-10" y="-10" width="8" height="14" rx="2" fill="#94a3b8"/>
+                        <rect x="2" y="-10" width="8" height="14" rx="2" fill="#94a3b8"/>
+                        <rect x="-3" y="-12" width="6" height="10" rx="1" fill="#0f172a"/>
+                    `);
+                case 7: // Spike Bot
+                    return wrap(`
+                        <path d="M0 -12 L-6 6 L6 6 Z" fill="#10b981"/>
+                        <rect x="-8" y="6" width="16" height="5" rx="1" fill="#065f46"/>
+                    `);
+                case 8: // Mega Spike
+                    return wrap(`
+                        <path d="M0 -14 L-7 4 L7 4 Z" fill="#22d3ee"/>
+                        <path d="M-11 -4 L-5 4 L-3 0 Z" fill="#22d3ee"/>
+                        <path d="M11 -4 L5 4 L3 0 Z" fill="#22d3ee"/>
+                        <rect x="-10" y="4" width="20" height="5" rx="1" fill="#164e63"/>
+                    `);
+                case 9: // Double Bot
+                    return wrap(`
+                        <g transform="translate(0,-8)">
+                            <rect x="-5" y="-6" width="10" height="12" rx="2" fill="#1e293b" stroke="#0ea5e9" stroke-width="1.2"/>
+                            <rect x="3" y="-2.5" width="12" height="5" rx="1" fill="#0ea5e9"/>
+                            <rect x="13" y="-1.5" width="2.5" height="3" fill="#e2e8f0"/>
+                        </g>
+                        <g transform="translate(0,8)">
+                            <rect x="-5" y="-6" width="10" height="12" rx="2" fill="#1e293b" stroke="#0ea5e9" stroke-width="1.2"/>
+                            <rect x="3" y="-2.5" width="12" height="5" rx="1" fill="#0ea5e9"/>
+                            <rect x="13" y="-1.5" width="2.5" height="3" fill="#e2e8f0"/>
+                        </g>
+                    `);
+                case 10: // Triple Bot
+                    return wrap(`
+                        <g transform="translate(0,-11) scale(0.75)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#818cf8" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#818cf8"/>
+                            <rect x="16" y="-2" width="3" height="4" fill="#e2e8f0"/>
+                        </g>
+                        <g transform="scale(0.75)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#818cf8" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#818cf8"/>
+                            <rect x="16" y="-2" width="3" height="4" fill="#e2e8f0"/>
+                        </g>
+                        <g transform="translate(0,11) scale(0.75)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#818cf8" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#818cf8"/>
+                            <rect x="16" y="-2" width="3" height="4" fill="#e2e8f0"/>
+                        </g>
+                    `);
+                case 11: // Mega Shield
+                    return wrap(`
+                        <path d="M0 -16 L14 -10 L14 6 L0 16 L-14 6 L-14 -10 Z" fill="rgba(96,165,250,0.25)"/>
+                        <path d="M0 -12 L10 -7 L10 4 L0 12 L-10 4 L-10 -7 Z" fill="#1e3a5f" stroke="#60a5fa" stroke-width="2"/>
+                        <path d="M0 -5 L5 0 L0 5 L-5 0 Z" fill="#93c5fd"/>
+                    `);
+                case 12: // Smash Bot
+                    return wrap(`
+                        <rect x="-2" y="2" width="4" height="12" rx="1" fill="#9f1239"/>
+                        <rect x="-11" y="-12" width="22" height="16" rx="4" fill="#e11d48" stroke="#f43f5e" stroke-width="1.5"/>
+                        <rect x="-9" y="-9" width="4" height="9" rx="1" fill="#fda4af"/>
+                        <rect x="-2" y="-9" width="4" height="9" rx="1" fill="#fda4af"/>
+                        <rect x="5" y="-9" width="4" height="9" rx="1" fill="#fda4af"/>
+                    `);
+                case 13: // Multi Bot
+                    return wrap(`
+                        <g transform="translate(-10,-10) scale(0.45)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#f472b6" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#f472b6"/>
+                        </g>
+                        <g transform="translate(10,-10) scale(0.45)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#f472b6" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#f472b6"/>
+                        </g>
+                        <g transform="scale(0.45)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#f472b6" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#f472b6"/>
+                        </g>
+                        <g transform="translate(-10,10) scale(0.45)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#f472b6" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#f472b6"/>
+                        </g>
+                        <g transform="translate(10,10) scale(0.45)">
+                            <rect x="-6" y="-7" width="12" height="14" rx="2" fill="#1e293b" stroke="#f472b6" stroke-width="1.5"/>
+                            <rect x="4" y="-3" width="14" height="6" rx="1" fill="#f472b6"/>
+                        </g>
+                    `);
+                case 14: // Freeze Bot
+                    return wrap(`
+                        <g transform="scale(-1,1)">
+                            <rect x="-3" y="0" width="10" height="18" rx="2" fill="#2563eb"/>
+                            <rect x="-18" y="-8" width="25" height="13" rx="3" fill="#60a5fa"/>
+                            <rect x="-21" y="-5" width="5" height="8" rx="1" fill="#bae6fd"/>
+                            <rect x="-18" y="-8" width="20" height="3" fill="#e0f2fe"/>
+                        </g>
+                    `);
+                case 15: // Chomp Bot
+                    return wrap(`
+                        <path d="M 0 0 L 16 -8 A 18 18 0 1 0 16 8 Z" fill="#84cc16"/>
+                        <circle cx="3" cy="-8" r="3" fill="#020617"/>
+                    `);
+                default:
+                    return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
             }
-            // Standard symbol
-            return `<span style="font-size:${baseSize}px; transform: ${bot.id === 1 ? 'scale(-1, 1)' : 'none'}; display: inline-block; vertical-align: middle;">${bot.symbol}</span>`;
         }
 
         function drawTopBar() {
@@ -1905,92 +2509,8 @@
                 ctx.save();
                 ctx.translate(x + cardWidth/2, y + 45);
                 
-                if (card.id === 9) { // Double Bot Graphic
-                    ctx.scale(-1, 1); 
-                    ctx.fillStyle = card.color;
-                    ctx.font = "20px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText("🔫", 0, -8);
-                    ctx.fillText("🔫", 0, 10);
-                } else if (card.id === 10) { // Triple Bot Graphic
-                    ctx.scale(-1, 1); 
-                    ctx.fillStyle = card.color;
-                    ctx.font = "16px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText("🔫", 0, -14);
-                    ctx.fillText("🔫", 0, 0);
-                    ctx.fillText("🔫", 0, 14);
-                } else if (card.id === 13) { // Multi Bot UI Graphic
-                    ctx.scale(-1, 1);
-                    ctx.fillStyle = card.color;
-                    ctx.font = "16px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText("🔫", -14, -14);
-                    ctx.fillText("🔫", 14, -14);
-                    ctx.fillText("🔫", 0, 0);
-                    ctx.fillText("🔫", -14, 14);
-                    ctx.fillText("🔫", 14, 14);
-                } else if (card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
-                    ctx.scale(-1, 1); 
-                    
-                    // Handle
-                    ctx.fillStyle = "#2563eb"; 
-                    ctx.beginPath();
-                    ctx.roundRect(-3, 0, 10, 18, 2);
-                    ctx.fill();
-                    
-                    // Barrel
-                    ctx.fillStyle = "#60a5fa"; 
-                    ctx.beginPath();
-                    ctx.roundRect(-18, -8, 25, 13, 3);
-                    ctx.fill();
-                    
-                    // Ice Nozzle
-                    ctx.fillStyle = "#bae6fd"; 
-                    ctx.beginPath();
-                    ctx.roundRect(-21, -5, 5, 8, 1);
-                    ctx.fill();
-                    
-                    // Top Highlight Strip
-                    ctx.fillStyle = "#e0f2fe"; 
-                    ctx.fillRect(-18, -8, 20, 3);
-
-                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
-                    ctx.fillStyle = card.color;
-                    ctx.beginPath();
-                    let mouthAngle = 0.2;
-                    if (this.chompState === 'idle') {
-                        mouthAngle = 0.05 + Math.abs(Math.sin(frame * 0.1)) * 0.25;
-                    } else if (this.chompState === 'digesting') {
-                        mouthAngle = 0.02; // Closed while digesting
-                    }
-                    ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
-                    ctx.lineTo(0, 0);
-                    ctx.fill();
-
-                    ctx.fillStyle = "#020617";
-                    ctx.beginPath();
-                    ctx.arc(3, -9, 3, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    if (this.chompState === 'digesting') {
-                        ctx.fillStyle = "#bef264";
-                        ctx.font = "bold 14px Orbitron";
-                        let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
-                        ctx.fillText(dots, 0, -25);
-                    }
-                } else { // Standard Graphic behavior
-                    if (card.id === 1) {
-                        ctx.scale(-1, 1); 
-                    }
-                    ctx.fillStyle = card.color;
-                    ctx.font = "30px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(card.symbol, 0, 0);
+                if (BotGraphics[card.id]) {
+                    BotGraphics[card.id](ctx, 0.65, card.id === 13 ? 5 : undefined);
                 }
                 
                 ctx.restore();
@@ -2471,50 +2991,8 @@
                 ctx.textBaseline = "middle";
                 ctx.translate(mouse.x, mouse.y);
                 
-                if (card.id === 9) { // Custom Double Bot Graphic
-                    ctx.scale(-1, 1);
-                    ctx.font = "28px Arial"; 
-                    ctx.fillText("🔫", 0, -12);
-                    ctx.fillText("🔫", 0, 15);
-                } else if (card.id === 10) { // Custom Triple Bot Graphic
-                    ctx.scale(-1, 1);
-                    ctx.font = "24px Arial"; 
-                    ctx.fillText("🔫", 0, -20);
-                    ctx.fillText("🔫", 0, 0);
-                    ctx.fillText("🔫", 0, 20);
-                } else if (card.id === 13) { // Custom Multi Bot Graphic
-                    ctx.scale(-1, 1);
-                    ctx.font = "18px Arial"; 
-                    ctx.fillText("🔫", -15, -15);
-                    ctx.fillText("🔫", 15, -15);
-                    ctx.fillText("🔫", 0, 0);
-                    ctx.fillText("🔫", -15, 15);
-                    ctx.fillText("🔫", 15, 15);
-                } else if (card.id === 14) { // Custom Hand-Drawn Freeze Blaster Graphic
-                    ctx.scale(-1, 1);
-                    ctx.fillStyle = "#2563eb"; 
-                    ctx.fillRect(-4, 0, 13, 24);
-                    ctx.fillStyle = "#60a5fa"; 
-                    ctx.fillRect(-24, -10, 33, 17);
-                    ctx.fillStyle = "#bae6fd"; 
-                    ctx.fillRect(-28, -6, 6, 10);
-                    ctx.fillStyle = "#e0f2fe"; 
-                    ctx.fillRect(-24, -10, 26, 4);
-                } else if (card.id === 15) { // Chomp Bot Custom Inside Graphic
-                    ctx.fillStyle = card.color;
-                    ctx.beginPath();
-                    let mouthAngle = 0.2;
-                    ctx.arc(0, 0, 18, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
-                    ctx.lineTo(0, 0);
-                    ctx.fill();
-                    ctx.fillStyle = "#020617";
-                    ctx.beginPath();
-                    ctx.arc(3, -9, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    ctx.font = "40px Arial";
-                    if (card.id === 1) ctx.scale(-1, 1); 
-                    ctx.fillText(card.symbol, 0, 0);
+                if (BotGraphics[card.id]) {
+                    BotGraphics[card.id](ctx, 1.2, card.id === 13 ? 5 : undefined);
                 }
                 
                 ctx.restore();
