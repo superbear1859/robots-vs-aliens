@@ -2446,7 +2446,60 @@
             ctx.fillText(`Score: ${score}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 - 25);
             ctx.fillStyle = "#ef4444";
             ctx.fillText(`Level: ${level}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2);
-            ctx.fillText(`Wave: ${wave}`, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 25);
+            
+            // Level Progress Bar with Wave Markers
+            let pbWidth = 150;
+            let pbHeight = 12;
+            let pbX = CANVAS_WIDTH - 20 - pbWidth;
+            let pbY = TOP_BAR_HEIGHT / 2 + 15;
+            
+            // Background
+            ctx.fillStyle = "#0f172a";
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(pbX, pbY, pbWidth, pbHeight, 6);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Progress fill
+            let progress = Math.min(frame / currentFramesLimit, 1);
+            let fillWidth = progress * pbWidth;
+            if (fillWidth > 0 && progress <= 1) {
+                // If not fully 100%, rounded left corners only. If 100%, fully rounded
+                ctx.fillStyle = "#10b981"; // Green fill
+                ctx.beginPath();
+                if (progress >= 1) {
+                    ctx.roundRect(pbX, pbY, fillWidth, pbHeight, 6);
+                } else {
+                    ctx.roundRect(pbX, pbY, fillWidth, pbHeight, {tl:6, bl:6, tr:0, br:0});
+                }
+                ctx.fill();
+            }
+            
+            // Wave Markers
+            ctx.fillStyle = "#ef4444";
+            ctx.strokeStyle = "#0f172a";
+            ctx.lineWidth = 2;
+            let totalWaves = Math.floor((currentFramesLimit - 1) / 900);
+            for (let i = 1; i <= totalWaves; i++) {
+                let waveFrame = i * 900;
+                if (waveFrame < currentFramesLimit) {
+                    let markerX = pbX + (waveFrame / currentFramesLimit) * pbWidth;
+                    
+                    ctx.beginPath();
+                    ctx.arc(markerX, pbY + pbHeight / 2, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+            
+            // End marker (level flag icon or dot)
+            ctx.fillStyle = "#38bdf8";
+            ctx.beginPath();
+            ctx.arc(pbX + pbWidth, pbY + pbHeight / 2, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
 
             let cardStartX = 140;
             let cardWidth = 75;
