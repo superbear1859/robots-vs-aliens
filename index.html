@@ -2466,13 +2466,14 @@
             let progress = Math.min(frame / currentFramesLimit, 1);
             let fillWidth = progress * pbWidth;
             if (fillWidth > 0 && progress <= 1) {
-                // If not fully 100%, rounded left corners only. If 100%, fully rounded
+                // If not fully 100%, rounded right corners only. If 100%, fully rounded
                 ctx.fillStyle = "#10b981"; // Green fill
                 ctx.beginPath();
+                let fillX = pbX + pbWidth - fillWidth;
                 if (progress >= 1) {
-                    ctx.roundRect(pbX, pbY, fillWidth, pbHeight, 6);
+                    ctx.roundRect(fillX, pbY, fillWidth, pbHeight, 6);
                 } else {
-                    ctx.roundRect(pbX, pbY, fillWidth, pbHeight, {tl:6, bl:6, tr:0, br:0});
+                    ctx.roundRect(fillX, pbY, fillWidth, pbHeight, {tl:0, bl:0, tr:6, br:6});
                 }
                 ctx.fill();
             }
@@ -2485,7 +2486,7 @@
             for (let i = 1; i <= totalWaves; i++) {
                 let waveFrame = i * 900;
                 if (waveFrame < currentFramesLimit) {
-                    let markerX = pbX + (waveFrame / currentFramesLimit) * pbWidth;
+                    let markerX = pbX + pbWidth - (waveFrame / currentFramesLimit) * pbWidth;
                     
                     ctx.beginPath();
                     ctx.arc(markerX, pbY + pbHeight / 2, 4.5, 0, Math.PI * 2);
@@ -2497,7 +2498,7 @@
             // End marker (level flag icon or dot)
             ctx.fillStyle = "#38bdf8";
             ctx.beginPath();
-            ctx.arc(pbX + pbWidth, pbY + pbHeight / 2, 5, 0, Math.PI * 2);
+            ctx.arc(pbX, pbY + pbHeight / 2, 5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
