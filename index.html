@@ -726,7 +726,8 @@
             { id: 12, name: "Smash Bot", cost: 75, color: "#f43f5e", symbol: "🪨", desc: "Leaps & crushes", hp: 300, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 13, name: "Multi Bot", cost: 150, color: "#f472b6", symbol: "🔢", desc: "Upgrades up to 5x", hp: 150, fireRate: 100, cooldown: 300, currentCooldown: 0 },
             { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
-            { id: 15, name: "Chomp Bot", cost: 150, color: "#84cc16", symbol: "🐊", desc: "Eats foes & digests", hp: 400, fireRate: 0, cooldown: 600, currentCooldown: 0 }
+            { id: 15, name: "Chomp Bot", cost: 150, color: "#84cc16", symbol: "🐊", desc: "Eats foes & digests", hp: 400, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 16, name: "Laser Bot", cost: 150, color: "#ef4444", symbol: "☄️", desc: "Piercing beam", hp: 120, fireRate: 150, cooldown: 450, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1087,6 +1088,33 @@
                 ctx.fillStyle = "#020617";
                 ctx.beginPath();
                 ctx.arc(3*s, -9*s, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            // 16: Laser Bot
+            16: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-8*s, -8*s, 16*s, 16*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#f87171";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath();
+                ctx.roundRect(4*s, -4*s, 16*s, 8*s, 2*s);
+                ctx.fill();
+                ctx.fillStyle = "#fca5a5";
+                ctx.beginPath();
+                ctx.arc(20*s, 0, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#b91c1c";
+                ctx.beginPath();
+                ctx.arc(0, 0, 4*s, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = "#fca5a5";
+                ctx.beginPath();
+                ctx.arc(0, 0, 1.5*s, 0, Math.PI*2);
                 ctx.fill();
             }
         };
@@ -1642,26 +1670,27 @@
                     let shotFired = false;
                     let isPlasma = this.card.id === 3;
                     let isFreeze = this.card.id === 14;
+                    let isLaser = this.card.id === 16;
 
                     if (this.isTripleShooter) {
                         if (alienInLane || alienAbove || alienBelow) {
                             // Fire in current lane
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
                             // Fire in lane above (if it exists on the board)
                             if (this.y - CELL_SIZE >= getGridStartY()) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
                             }
                             // Fire in lane below (if it exists on the board)
                             if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
                             }
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
                             // Spawn two projectiles vertically aligned with the barrels of the two guns
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze, isLaser));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze, isLaser));
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
@@ -1677,13 +1706,13 @@
                             ];
                             let pos = positions[this.multiCount];
                             for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze, isLaser));
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
                             shotFired = true;
                         }
                     }
@@ -2131,16 +2160,18 @@
         }
 
         class Projectile {
-            constructor(x, y, isPlasma, isFreeze = false) {
+            constructor(x, y, isPlasma, isFreeze = false, isLaser = false) {
                 this.x = x;
                 this.y = y;
                 this.isPlasma = isPlasma;
                 this.isFreeze = isFreeze;
-                this.speed = isPlasma ? 8 : (isFreeze ? 7 : 5);
-                this.damage = isPlasma ? 50 : (isFreeze ? 15 : 20); // slightly less damage for freeze
-                this.radius = isPlasma ? 8 : (isFreeze ? 6 : 5);
-                this.color = isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8");
+                this.isLaser = isLaser;
+                this.speed = isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : 5));
+                this.damage = isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : 20)); // slightly less damage for freeze, even less for laser
+                this.radius = isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : 5));
+                this.color = isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8"));
                 this.hit = false;
+                this.hitTargets = new Set();
             }
 
             draw() {
@@ -2148,7 +2179,17 @@
                 ctx.shadowBlur = 10;
                 ctx.fillStyle = this.color;
                 
-                if (this.isFreeze) {
+                if (this.isLaser) {
+                    // Draw a long laser beam
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 30, this.y - 3, 60, 6, 2);
+                    ctx.fill();
+                    // Core highlight
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 20, this.y - 1, 40, 2, 1);
+                    ctx.fill();
+                } else if (this.isFreeze) {
                     // Draw sharp icicle projectile
                     ctx.beginPath();
                     ctx.moveTo(this.x + 12, this.y); // Sharp tip pointing forward
@@ -2418,6 +2459,14 @@
                     return wrap(`
                         <path d="M 0 0 L 16 -8 A 18 18 0 1 0 16 8 Z" fill="#84cc16"/>
                         <circle cx="3" cy="-8" r="3" fill="#020617"/>
+                    `);
+                case 16: // Laser Bot
+                    return wrap(`
+                        <rect x="-8" y="-8" width="16" height="16" rx="3" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+                        <rect x="4" y="-4" width="16" height="8" rx="2" fill="#ef4444"/>
+                        <circle cx="20" cy="0" r="3" fill="#fca5a5"/>
+                        <circle cx="0" cy="0" r="4" fill="#b91c1c"/>
+                        <circle cx="0" cy="0" r="1.5" fill="#fca5a5"/>
                     `);
                 default:
                     return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
@@ -2777,20 +2826,28 @@
                         projectiles[i].y > attackers[j].y && 
                         projectiles[i].y < attackers[j].y + attackers[j].height) {
                         
+                        if (projectiles[i].isLaser) {
+                            if (projectiles[i].hitTargets.has(attackers[j])) continue;
+                            projectiles[i].hitTargets.add(attackers[j]);
+                        }
+
                         attackers[j].health -= projectiles[i].damage;
                         
                         if (projectiles[i].isFreeze) {
                             attackers[j].freezeTimer = 180; // Apply 3 seconds of freeze effect
                         }
 
-                        projHit = true;
+                        if (!projectiles[i].isLaser) {
+                            projHit = true;
+                        }
                         SoundEngine.alienHit(); 
 
                         ctx.fillStyle = "white";
                         ctx.beginPath();
                         ctx.arc(projectiles[i].x, projectiles[i].y, 15, 0, Math.PI*2);
                         ctx.fill();
-                        break; 
+                        
+                        if (projHit) break; 
                     }
                 }
 
@@ -2940,6 +2997,7 @@
             if (level >= 14) unlockedBots.push(cardTypes.find(c => c.id === 13)); // Multi Bot
             if (level >= 15) unlockedBots.push(cardTypes.find(c => c.id === 14)); // Freeze Bot
             if (level >= 16) unlockedBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
+            if (level >= 17) unlockedBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -3148,6 +3206,7 @@
             if (level >= 14) pickableBots.push(cardTypes.find(c => c.id === 13));
             if (level >= 15) pickableBots.push(cardTypes.find(c => c.id === 14)); 
             if (level >= 16) pickableBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
+            if (level >= 17) pickableBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
