@@ -623,6 +623,10 @@
                 const osc = this.playTone(200, 'sawtooth', 1.0, 0.1, false);
                 if(osc) osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 1.0);
             },
+            missile: function() {
+                const osc = this.playTone(180, 'sawtooth', 0.6, 0.05, false);
+                if (osc) osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+            },
             levelComplete: function() {
                 this.stopBGM();
                 const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
@@ -728,7 +732,8 @@
             { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 15, name: "Chomp Bot", cost: 150, color: "#84cc16", symbol: "🐊", desc: "Eats foes & digests", hp: 400, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 16, name: "Laser Bot", cost: 150, color: "#ef4444", symbol: "☄️", desc: "Piercing beam", hp: 120, fireRate: 150, cooldown: 450, currentCooldown: 0 },
-            { id: 17, name: "Flame Bot", cost: 125, color: "#f97316", symbol: "🔥", desc: "Ignites projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 }
+            { id: 17, name: "Flame Bot", cost: 125, color: "#f97316", symbol: "🔥", desc: "Ignites projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 18, name: "Missile Bot", cost: 225, color: "#cbd5e1", symbol: "🚀", desc: "Homing missiles", hp: 150, fireRate: 60, cooldown: 600, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1151,6 +1156,31 @@
                 ctx.quadraticCurveTo(-1*s, -6*s, 0, -10*s);
                 ctx.quadraticCurveTo(1*s, -6*s, 2*s, -2*s);
                 ctx.fill();
+            },
+            // 18: Missile Bot
+            18: function(ctx, s) {
+                s = s || 1;
+                // Base
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, -4*s, 20*s, 16*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineWidth = 1.5*s;
+                ctx.stroke();
+
+                // Rocket pod
+                ctx.fillStyle = "#475569";
+                ctx.beginPath();
+                ctx.roundRect(-8*s, -12*s, 16*s, 10*s, 2*s);
+                ctx.fill();
+                
+                // Missile tips
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath();
+                ctx.moveTo(-4*s, -12*s); ctx.lineTo(-2*s, -16*s); ctx.lineTo(0, -12*s); ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(0*s, -12*s); ctx.lineTo(2*s, -16*s); ctx.lineTo(4*s, -12*s); ctx.fill();
             }
         };
 
@@ -1407,6 +1437,7 @@
                 this.digestTimer = 0;
                 
                 this.isFlameBot = card.id === 17;
+                this.isHomingShooter = card.id === 18;
                 
                 this.armed = false; 
             }
@@ -1762,6 +1793,15 @@
                     if (shotFired) {
                         SoundEngine.shoot(isPlasma, isFreeze); 
                         this.offsetX = 5; 
+                        setTimeout(() => this.offsetX = 10, 100);
+                    }
+                }
+
+                if (this.isHomingShooter && this.timer % this.card.fireRate === 0) {
+                    if (attackers.length > 0) {
+                        projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, false, false, false, true));
+                        SoundEngine.missile();
+                        this.offsetX = 5;
                         setTimeout(() => this.offsetX = 10, 100);
                     }
                 }
@@ -2212,16 +2252,18 @@
         }
 
         class Projectile {
-            constructor(x, y, isPlasma, isFreeze = false, isLaser = false) {
+            constructor(x, y, isPlasma, isFreeze = false, isLaser = false, isHoming = false) {
                 this.x = x;
                 this.y = y;
                 this.isPlasma = isPlasma;
                 this.isFreeze = isFreeze;
                 this.isLaser = isLaser;
-                this.speed = isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : 5));
-                this.damage = isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : 20)); // slightly less damage for freeze, even less for laser
-                this.radius = isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : 5));
-                this.color = isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8"));
+                this.isHoming = isHoming;
+                this.target = null;
+                this.speed = isHoming ? 4 : (isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : 5)));
+                this.damage = isHoming ? 12 : (isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : 20))); // slightly less damage for freeze, even less for laser
+                this.radius = isHoming ? 6 : (isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : 5)));
+                this.color = isHoming ? "#f43f5e" : (isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8")));
                 this.hit = false;
                 this.hitTargets = new Set();
             }
@@ -2241,6 +2283,20 @@
                     ctx.beginPath();
                     ctx.roundRect(this.x - 20, this.y - 1, 40, 2, 1);
                     ctx.fill();
+                } else if (this.isHoming) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    if (this.angle !== undefined) ctx.rotate(this.angle);
+                    
+                    ctx.beginPath();
+                    ctx.roundRect(-8, -4, 16, 8, 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -4); ctx.lineTo(-12, -6); ctx.lineTo(-10, 0); ctx.lineTo(-12, 6); ctx.lineTo(-8, 4); 
+                    ctx.fill();
+                    
+                    ctx.restore();
                 } else if (this.isFreeze) {
                     // Draw sharp icicle projectile
                     ctx.beginPath();
@@ -2276,6 +2332,33 @@
             }
 
             update() {
+                if (this.isHoming) {
+                    if (!this.target || this.target.health <= 0 || !attackers.includes(this.target)) {
+                        // Find closest target
+                        let minDist = Infinity;
+                        this.target = null;
+                        for (let i = 0; i < attackers.length; i++) {
+                            let dist = Math.hypot(attackers[i].x - this.x, attackers[i].y - this.y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                this.target = attackers[i];
+                            }
+                        }
+                    }
+
+                    if (this.target) {
+                        let dx = (this.target.x + this.target.width/2) - this.x;
+                        let dy = (this.target.y + this.target.height/2) - this.y;
+                        let dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            // Rotate graphic towards target
+                            this.angle = Math.atan2(dy, dx);
+                            this.x += (dx / dist) * this.speed;
+                            this.y += (dy / dist) * this.speed;
+                        }
+                        return;
+                    }
+                }
                 this.x += this.speed;
             }
         }
@@ -2526,6 +2609,13 @@
                         <path d="M-8 -2 Q-6 -16 0 -22 Q6 -16 8 -2 Z" fill="#ef4444"/>
                         <path d="M-5 -2 Q-3 -12 0 -16 Q3 -12 5 -2 Z" fill="#f97316"/>
                         <path d="M-2 -2 Q-1 -6 0 -10 Q1 -6 2 -2 Z" fill="#facc15"/>
+                    `);
+                case 18: // Missile Bot
+                    return wrap(`
+                        <rect x="-10" y="-4" width="20" height="16" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="1.5"/>
+                        <rect x="-8" y="-12" width="16" height="10" rx="2" fill="#475569"/>
+                        <path d="M-4 -12 L-2 -16 L0 -12 Z" fill="#ef4444"/>
+                        <path d="M0 -12 L2 -16 L4 -12 Z" fill="#ef4444"/>
                     `);
                 default:
                     return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
@@ -3077,6 +3167,7 @@
             if (level >= 16) unlockedBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
             if (level >= 17) unlockedBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) unlockedBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
+            if (level >= 19) unlockedBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -3287,6 +3378,7 @@
             if (level >= 16) pickableBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
             if (level >= 17) pickableBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
+            if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -3353,6 +3445,7 @@
             if (level >= 16) pickableBots.push(cardTypes.find(c => c.id === 15)); // Chomp Bot
             if (level >= 17) pickableBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
+            if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
