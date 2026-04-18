@@ -413,7 +413,7 @@
             <svg id="fsIconEnter" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
             <svg id="fsIconExit" style="display: none;" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
         </button>
-        <button id="adminMenuBtn" class="in-game-btn hidden-btn" style="top: 5px; left: 5px; bottom: auto; right: auto; width: auto; min-width: 0; padding: 10px 15px; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;">⚙</button>
+        <button id="adminMenuBtn" class="in-game-btn" style="top: 5px; left: 5px; z-index: 100; bottom: auto; right: auto; width: auto; min-width: 0; padding: 10px 15px; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;">⚙</button>
         
         <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
             <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
@@ -466,6 +466,7 @@
             <h1 style="font-size: 4vw; margin-bottom: 20px;">Settings</h1>
             <div class="button-group" style="flex-direction: column; gap: 20px; align-items: center;">
                 <button id="speedBtn" class="main-btn" style="width: 100%; max-width: 350px;">▶▶ 1x Speed</button>
+                <button id="toggleGraphicsBtn" class="main-btn" style="background: linear-gradient(45deg, #8b5cf6, #a855f7); width: 100%; max-width: 350px;">Switch to Simple Graphics</button>
                 <button id="addScoreBtn" class="main-btn" style="background: linear-gradient(45deg, #22c55e, #10b981); width: 100%; max-width: 350px;">Earn 2000 Pts</button>
                 <button id="skipBtn" class="main-btn" style="background: linear-gradient(45deg, #f43f5e, #ef4444); width: 100%; max-width: 350px;">Skip Level</button>
                 <button id="closeAdminBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); margin-top: 20px;">Close Menu</button>
@@ -657,6 +658,7 @@
         const closeManualBtn = document.getElementById('closeManualBtn');
         const manualScreen = document.getElementById('manualScreen');
         const speedBtn = document.getElementById('speedBtn');
+        const toggleGraphicsBtn = document.getElementById('toggleGraphicsBtn');
         const adminMenuBtn = document.getElementById('adminMenuBtn');
         const adminScreen = document.getElementById('adminScreen');
         const closeAdminBtn = document.getElementById('closeAdminBtn');
@@ -690,6 +692,7 @@
         let gameRunning = false;
         let animationId;
         let nextAlienSpawnTime = 0;
+        let useEmojiGraphics = false;
 
         let maxSlots = 6;
         let extraSlotPurchased = false;
@@ -722,8 +725,8 @@
             { id: 4, name: "Bomb Bot", cost: 150, color: "#ef4444", symbol: "💣", desc: "Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 5, name: "Mine Bot", cost: 25, color: "#f97316", symbol: "🖲️", desc: "Explodes on Contact", hp: 100, fireRate: 0, cooldown: 1200, currentCooldown: 0 },
             { id: 6, name: "Dig Tool", cost: 0, color: "#64748b", symbol: "🔩", desc: "Dig up a bot", hp: 0, fireRate: 0, cooldown: 30, currentCooldown: 0 },
-            { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
-            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 7, name: "Spike Bot", cost: 75, color: "#10b981", symbol: "🌵", desc: "Ground Trap", hp: 300, fireRate: 0, cooldown: 450, currentCooldown: 0 },
+            { id: 8, name: "Mega Spike", cost: 125, color: "#22d3ee", symbol: "💎", desc: "Upgrades Spike Bot", hp: 600, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 9, name: "Double Bot", cost: 200, color: "#0ea5e9", symbol: "♊", desc: "Fires two shots", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 10, name: "Triple Bot", cost: 300, color: "#818cf8", symbol: "🔱", desc: "Fires in 3 rows", hp: 150, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 },
@@ -1254,6 +1257,17 @@
             }
         });
 
+        toggleGraphicsBtn.addEventListener('click', () => {
+            useEmojiGraphics = !useEmojiGraphics;
+            toggleGraphicsBtn.innerText = useEmojiGraphics ? "Switch to Advanced Graphics" : "Switch to Simple Graphics";
+            if (typeof renderLoadout === 'function' && !document.getElementById('loadoutScreen').classList.contains('hidden')) {
+                renderLoadout();
+            }
+            if (typeof populateManual === 'function' && !document.getElementById('manualScreen').classList.contains('hidden')) {
+                populateManual();
+            }
+        });
+
         // Fullscreen Logic
         const isFullscreenSupported = document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled;
         if (!isFullscreenSupported) {
@@ -1483,6 +1497,37 @@
                 const cy = drawY + this.height / 2;
 
                 ctx.save();
+
+                if (useEmojiGraphics) {
+                    ctx.fillStyle = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
+                    ctx.strokeStyle = this.card.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.roundRect(drawX, drawY, this.width, this.height, 10);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = "white";
+                    ctx.font = "40px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    
+                    if (this.card.symbol === '🔫') {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        ctx.scale(-1, 1);
+                        ctx.fillText(this.card.symbol, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(this.card.symbol, cx, cy);
+                    }
+                    
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fillRect(drawX, drawY - 10, this.width, 5);
+                    ctx.fillStyle = "#22c55e";
+                    ctx.fillRect(drawX, drawY - 10, this.width * (this.health / this.maxHealth), 5);
+                    ctx.restore();
+                    return;
+                }
 
                 if (this.isBomb) {
                     let scale = 1 + (this.timer / 45) * 0.15;
@@ -1898,6 +1943,7 @@
 
                 // If frozen, override color to be a frosty blue
                 let currentColor = this.burnTimer > 0 ? "#f97316" : (this.freezeTimer > 0 ? "#93c5fd" : this.color);
+
 
                 ctx.shadowColor = currentColor;
                 ctx.shadowBlur = 15;
@@ -2445,6 +2491,10 @@
         // Helper function to build HTML icons for the menus
         function getBotSymbolHTML(bot, isManual = false) {
             if (!bot) return '';
+            if (useEmojiGraphics) {
+                let flipStyle = bot.symbol === '🔫' ? 'transform: scaleX(-1);' : '';
+                return `<span style="font-size: ${isManual ? '24px' : '20px'}; display: inline-block; text-align: center; line-height: 1; ${flipStyle}">${bot.symbol}</span>`;
+            }
             let s = isManual ? 28 : 26;
             const wrap = (svg) => `<div style="display:inline-block; width:${s}px; height:${s}px; vertical-align:middle;"><svg viewBox="-22 -22 44 44" width="100%" height="100%">${svg}</svg></div>`;
 
@@ -2761,7 +2811,20 @@
                 ctx.save();
                 ctx.translate(x + cardWidth/2, y + 45);
                 
-                if (BotGraphics[card.id]) {
+                if (useEmojiGraphics) {
+                    ctx.fillStyle = "white";
+                    ctx.font = "30px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    if (card.symbol === '🔫') {
+                        ctx.save();
+                        ctx.scale(-1, 1);
+                        ctx.fillText(card.symbol, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(card.symbol, 0, 0);
+                    }
+                } else if (BotGraphics[card.id]) {
                     BotGraphics[card.id](ctx, 0.65, card.id === 13 ? 5 : undefined);
                 }
                 
@@ -3273,7 +3336,20 @@
                 ctx.textBaseline = "middle";
                 ctx.translate(mouse.x, mouse.y);
                 
-                if (BotGraphics[card.id]) {
+                if (useEmojiGraphics) {
+                    ctx.fillStyle = "white";
+                    ctx.font = "40px Arial";
+                    ctx.scale(1.2, 1.2);
+                    
+                    if (card.symbol === '🔫') {
+                        ctx.save();
+                        ctx.scale(-1, 1);
+                        ctx.fillText(card.symbol, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(card.symbol, 0, 0);
+                    }
+                } else if (BotGraphics[card.id]) {
                     BotGraphics[card.id](ctx, 1.2, card.id === 13 ? 5 : undefined);
                 }
                 
@@ -3383,7 +3459,6 @@
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
                 currentLoadout = pickableBots.map(b => b.id);
-                adminMenuBtn.classList.remove('hidden-btn'); 
                 
                 initLevel();
                 SoundEngine.startBGM(level);
@@ -3534,7 +3609,6 @@
         function completeLevel() {
             gameRunning = false;
             cancelAnimationFrame(animationId);
-            adminMenuBtn.classList.add('hidden-btn'); 
             SoundEngine.levelComplete(); 
             document.getElementById('levelStats').innerText = `Score: ${score}`;
             level++;
@@ -3544,7 +3618,6 @@
         function endGame() {
             gameRunning = false;
             cancelAnimationFrame(animationId);
-            adminMenuBtn.classList.add('hidden-btn'); 
             SoundEngine.gameOverTone(); 
             statsEl.innerText = `Current Score: ${score} | Level: ${level}`;
             gameOverScreen.classList.remove('hidden');
@@ -3584,7 +3657,6 @@
 
         document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
             document.getElementById('loadoutScreen').classList.add('hidden');
-            adminMenuBtn.classList.remove('hidden-btn'); 
             
             initLevel();
             SoundEngine.startBGM(level);
@@ -3602,9 +3674,15 @@
 
         closeAdminBtn.addEventListener('click', () => {
             adminScreen.classList.add('hidden');
-            gameRunning = true;
-            SoundEngine.startBGM(level); // Restart music with updated speed
-            animate(); // Resume the game
+            if (document.getElementById('startScreen').classList.contains('hidden') &&
+                document.getElementById('loadoutScreen').classList.contains('hidden') &&
+                document.getElementById('levelCompleteScreen').classList.contains('hidden') &&
+                document.getElementById('gameOverScreen').classList.contains('hidden') &&
+                document.getElementById('manualScreen').classList.contains('hidden')) {
+                gameRunning = true;
+                SoundEngine.startBGM(level); // Restart music with updated speed
+                animate(); // Resume the game
+            }
         });
 
         skipBtn.addEventListener('click', () => {
