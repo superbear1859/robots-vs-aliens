@@ -732,11 +732,12 @@
             { id: 11, name: "Mega Shield", cost: 125, color: "#60a5fa", symbol: "💠", desc: "Upgrades Shield", hp: 1500, fireRate: 0, cooldown: 1800, currentCooldown: 0 },
             { id: 12, name: "Smash Bot", cost: 75, color: "#f43f5e", symbol: "🪨", desc: "Leaps & crushes", hp: 300, fireRate: 0, cooldown: 900, currentCooldown: 0 },
             { id: 13, name: "Multi Bot", cost: 150, color: "#f472b6", symbol: "🔢", desc: "Upgrades up to 5x", hp: 150, fireRate: 100, cooldown: 300, currentCooldown: 0 },
-            { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "🔫", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
+            { id: 14, name: "Freeze Bot", cost: 175, color: "#60a5fa", symbol: "❄️", desc: "Slows enemies", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 15, name: "Chomp Bot", cost: 150, color: "#84cc16", symbol: "🐊", desc: "Eats foes & digests", hp: 400, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 16, name: "Laser Bot", cost: 150, color: "#ef4444", symbol: "☄️", desc: "Piercing beam", hp: 120, fireRate: 150, cooldown: 450, currentCooldown: 0 },
             { id: 17, name: "Flame Bot", cost: 125, color: "#f97316", symbol: "🔥", desc: "Ignites projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
-            { id: 18, name: "Missile Bot", cost: 225, color: "#cbd5e1", symbol: "🚀", desc: "Homing missiles", hp: 150, fireRate: 60, cooldown: 600, currentCooldown: 0 }
+            { id: 18, name: "Missile Bot", cost: 225, color: "#cbd5e1", symbol: "🚀", desc: "Homing missiles", hp: 150, fireRate: 60, cooldown: 600, currentCooldown: 0 },
+            { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 240, cooldown: 450, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1184,6 +1185,31 @@
                 ctx.moveTo(-4*s, -12*s); ctx.lineTo(-2*s, -16*s); ctx.lineTo(0, -12*s); ctx.fill();
                 ctx.beginPath();
                 ctx.moveTo(0*s, -12*s); ctx.lineTo(2*s, -16*s); ctx.lineTo(4*s, -12*s); ctx.fill();
+            },
+            19: (ctx, s, customScale) => {
+                // Grenade Launcher Bot
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-10*s, -10*s, 20*s, 20*s, 5*s);
+                ctx.fill();
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+
+                // Gun pipe - pointing up-right like a lob!
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineCap = "round";
+                ctx.lineWidth = 6*s;
+                ctx.beginPath();
+                ctx.moveTo(-2*s, 0);
+                ctx.lineTo(8*s, -10*s);
+                ctx.stroke();
+
+                // Inner hole
+                ctx.fillStyle = "#020617";
+                ctx.beginPath();
+                ctx.arc(8*s, -10*s, 2*s, 0, Math.PI*2);
+                ctx.fill();
             }
         };
 
@@ -1426,7 +1452,7 @@
                 this.maxHealth = card.hp;
                 this.timer = 0;
                 
-                this.isShooter = card.id === 1 || card.id === 3 || card.id === 9 || card.id === 10 || card.id === 13 || card.id === 14 || card.id === 16;
+                this.isShooter = card.id === 1 || card.id === 3 || card.id === 9 || card.id === 10 || card.id === 13 || card.id === 14 || card.id === 16 || card.id === 19;
                 this.isDoubleShooter = card.id === 9;
                 this.isTripleShooter = card.id === 10;
                 this.isMultiShooter = card.id === 13;
@@ -1499,11 +1525,21 @@
                 ctx.save();
 
                 if (useEmojiGraphics) {
+                    let cyOffset = 0;
+                    if (this.isSpike) {
+                        let cycle = this.timer % 180;
+                        let extension = 0;
+                        if (cycle < 10) extension = cycle / 10;
+                        else if (cycle < 50) extension = 1;
+                        else if (cycle < 60) extension = 1 - ((cycle - 50) / 10);
+                        cyOffset = -15 * extension; // Jump up by 15 pixels
+                    }
+
                     ctx.fillStyle = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
                     ctx.strokeStyle = this.card.color;
                     ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.roundRect(drawX, drawY, this.width, this.height, 10);
+                    ctx.roundRect(drawX, drawY + cyOffset, this.width, this.height, 10);
                     ctx.fill();
                     ctx.stroke();
                     ctx.fillStyle = "white";
@@ -1513,18 +1549,29 @@
                     
                     if (this.card.symbol === '🔫') {
                         ctx.save();
-                        ctx.translate(cx, cy);
+                        ctx.translate(cx, cy + cyOffset);
                         ctx.scale(-1, 1);
                         ctx.fillText(this.card.symbol, 0, 0);
                         ctx.restore();
+                    } else if (this.card.id === 13) {
+                        let multiSymbols = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+                        let symbol = multiSymbols[Math.min(this.multiCount - 1, 4)] || "5️⃣";
+                        ctx.fillText(symbol, cx, cy + cyOffset);
                     } else {
-                        ctx.fillText(this.card.symbol, cx, cy);
+                        ctx.fillText(this.card.symbol, cx, cy + cyOffset);
+                    }
+                    
+                    if (this.isChomp && this.chompState === 'digesting') {
+                        ctx.fillStyle = "#bef264";
+                        ctx.font = "bold 14px Orbitron";
+                        let dots = frame % 60 < 20 ? "z" : (frame % 60 < 40 ? "zz" : "zzz");
+                        ctx.fillText(dots, cx, cy + cyOffset - 25);
                     }
                     
                     ctx.fillStyle = "#ef4444";
-                    ctx.fillRect(drawX, drawY - 10, this.width, 5);
+                    ctx.fillRect(drawX, drawY + cyOffset - 10, this.width, 5);
                     ctx.fillStyle = "#22c55e";
-                    ctx.fillRect(drawX, drawY - 10, this.width * (this.health / this.maxHealth), 5);
+                    ctx.fillRect(drawX, drawY + cyOffset - 10, this.width * (this.health / this.maxHealth), 5);
                     ctx.restore();
                     return;
                 }
@@ -1789,31 +1836,23 @@
                     let isPlasma = this.card.id === 3;
                     let isFreeze = this.card.id === 14;
                     let isLaser = this.card.id === 16;
+                    let isGrenade = this.card.id === 19;
 
                     if (this.isTripleShooter) {
                         if (alienInLane || alienAbove || alienBelow) {
-                            // Fire in current lane
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
-                            // Fire in lane above (if it exists on the board)
-                            if (this.y - CELL_SIZE >= getGridStartY()) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
-                            }
-                            // Fire in lane below (if it exists on the board)
-                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
-                            }
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
-                            // Spawn two projectiles vertically aligned with the barrels of the two guns
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze, isLaser));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze, isLaser));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze, isLaser, false, isGrenade));
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
                         if (alienInLane) {
-                            // Spawn staggered projectiles perfectly mapping to the visual positions of the guns
                             const positions = [
                                 [],
                                 [{x: 0, y: 0}],
@@ -1824,13 +1863,13 @@
                             ];
                             let pos = positions[this.multiCount];
                             for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze, isLaser));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze, isLaser, false, isGrenade));
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
                             shotFired = true;
                         }
                     }
@@ -2298,18 +2337,19 @@
         }
 
         class Projectile {
-            constructor(x, y, isPlasma, isFreeze = false, isLaser = false, isHoming = false) {
+            constructor(x, y, isPlasma, isFreeze = false, isLaser = false, isHoming = false, isGrenade = false) {
                 this.x = x;
                 this.y = y;
                 this.isPlasma = isPlasma;
                 this.isFreeze = isFreeze;
                 this.isLaser = isLaser;
                 this.isHoming = isHoming;
+                this.isGrenade = isGrenade;
                 this.target = null;
-                this.speed = isHoming ? 4 : (isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : 5)));
-                this.damage = isHoming ? 12 : (isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : 20))); // slightly less damage for freeze, even less for laser
-                this.radius = isHoming ? 6 : (isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : 5)));
-                this.color = isHoming ? "#f43f5e" : (isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8")));
+                this.speed = isHoming ? 4 : (isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : (isGrenade ? 3 : 5))));
+                this.damage = isHoming ? 12 : (isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : (isGrenade ? 200 : 20)))); // Grenade does 200 damage (1/10 of bomb)
+                this.radius = isHoming ? 6 : (isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : (isGrenade ? 7 : 5))));
+                this.color = isHoming ? "#f43f5e" : (isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : (isGrenade ? "#475569" : "#38bdf8"))));
                 this.hit = false;
                 this.hitTargets = new Set();
             }
@@ -2360,6 +2400,16 @@
                     ctx.lineTo(this.x - 8, this.y);
                     ctx.closePath();
                     ctx.fill();
+                } else if (this.isGrenade) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#facc15";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - this.radius);
+                    ctx.quadraticCurveTo(this.x + 4, this.y - this.radius - 4, this.x + 2, this.y - this.radius - 6);
+                    ctx.stroke();
                 } else {
                     // Standard plasma/blaster projectile
                     ctx.beginPath();
@@ -2666,6 +2716,12 @@
                         <rect x="-8" y="-12" width="16" height="10" rx="2" fill="#475569"/>
                         <path d="M-4 -12 L-2 -16 L0 -12 Z" fill="#ef4444"/>
                         <path d="M0 -12 L2 -16 L4 -12 Z" fill="#ef4444"/>
+                    `);
+                case 19: // Grenade Bot
+                    return wrap(`
+                        <rect x="-10" y="-10" width="20" height="20" rx="5" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                        <line x1="-2" y1="0" x2="8" y2="-10" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+                        <circle cx="8" cy="-10" r="2" fill="#020617"/>
                     `);
                 default:
                     return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
@@ -3068,6 +3124,16 @@
                             attackers[j].burnTimer = 180; // Apply 3 seconds of burn effect
                         }
 
+                        if (projectiles[i].isGrenade) {
+                            explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, 1.5 * CELL_SIZE));
+                            for (let a = 0; a < attackers.length; a++) {
+                                if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= 1.5 * CELL_SIZE) {
+                                    attackers[a].health -= projectiles[i].damage;
+                                }
+                            }
+                            SoundEngine.explosion();
+                        }
+
                         if (!projectiles[i].isLaser) {
                             projHit = true;
                         }
@@ -3231,6 +3297,7 @@
             if (level >= 17) unlockedBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) unlockedBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) unlockedBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
+            if (level >= 20) unlockedBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -3455,6 +3522,7 @@
             if (level >= 17) pickableBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
+            if (level >= 20) pickableBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -3521,6 +3589,7 @@
             if (level >= 17) pickableBots.push(cardTypes.find(c => c.id === 16)); // Laser Bot
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
+            if (level >= 20) pickableBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
