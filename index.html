@@ -2800,7 +2800,7 @@
             }
             
             // End marker (level flag icon or dot)
-            ctx.fillStyle = "#38bdf8";
+            ctx.fillStyle = "#facc15";
             ctx.beginPath();
             ctx.arc(pbX, pbY + pbHeight / 2, 5, 0, Math.PI * 2);
             ctx.fill();
@@ -3264,6 +3264,18 @@
             if (frame % 900 === 0 && frame > 0 && frame < currentFramesLimit) { 
                 wave++;
                 floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `WAVE ${wave}`, "239, 68, 68"));
+            }
+
+            if (frame === currentFramesLimit) {
+                floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `BIG WAVE!`, "250, 204, 21")); // Yellow text
+                let finalWaveCount = 4 + (level * 2) + Math.floor(wave * 1.5); 
+                for (let i = 0; i < finalWaveCount; i++) {
+                    let randomRow = Math.floor(Math.random() * activeRows);
+                    let y = getGridStartY() + (randomRow * CELL_SIZE);
+                    let attacker = new Attacker(y);
+                    attacker.x += Math.random() * (CELL_SIZE * 3);
+                    attackers.push(attacker);
+                }
             }
 
             if (frame >= currentFramesLimit && attackers.length === 0) {
