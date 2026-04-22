@@ -484,6 +484,15 @@
                 <button id="submitPasscodeBtn" class="main-btn">Authorize</button>
             </div>
         </div>
+
+        <div id="confirmChoiceScreen" class="overlay hidden" style="z-index: 60;">
+            <h1 id="confirmChoiceTitle" style="color: #ef4444; margin-bottom: 20px;">System Warning</h1>
+            <p id="confirmChoiceText" style="margin-bottom: 30px; font-size: 1.5vw; max-width: 80%; text-align: center; color: #fff;"></p>
+            <div class="button-group" style="display: flex; gap: 20px;">
+                <button id="noChoiceBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); margin-top: 0; padding: 15px 40px;">No</button>
+                <button id="yesChoiceBtn" class="main-btn" style="margin-top: 0; padding: 15px 40px;">Yes</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -2346,7 +2355,7 @@
                     if (target) {
                         this.shootTimer++;
                         if (this.shootTimer >= 100) {
-                            alienProjectiles.push(new AlienProjectile(this.x - 20, this.y + CELL_SIZE/2, 0.5)); // Lowered damage to 0.5
+                            alienProjectiles.push(new AlienProjectile(this.x - 20, this.y + CELL_SIZE/2, 0.8)); // Adjusted damage to 0.8
                             if (SoundEngine.shoot) SoundEngine.shoot(false);
                             this.shootTimer = 0;
                         }
@@ -3368,7 +3377,7 @@
 
             if (frame === currentFramesLimit) {
                 floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `BIG WAVE!`, "250, 204, 21")); // Yellow text
-                let finalWaveCount = 4 + (level * 2) + Math.floor(wave * 1.5); 
+                let finalWaveCount = 2 + Math.floor(level) + Math.floor(wave / 1.5); // Reduced from 4 + (level * 2) + Math.floor(wave * 1.5)
                 for (let i = 0; i < finalWaveCount; i++) {
                     let randomRow = Math.floor(Math.random() * activeRows);
                     let y = getGridStartY() + (randomRow * CELL_SIZE);
@@ -3841,13 +3850,45 @@
             }
         });
 
-        document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
+        function startActualGame() {
             document.getElementById('loadoutScreen').classList.add('hidden');
+            document.getElementById('confirmChoiceScreen').classList.add('hidden');
             
             initLevel();
             SoundEngine.startBGM(level);
             gameRunning = true;
             animate();
+        }
+
+        document.getElementById('confirmLoadoutBtn').addEventListener('click', () => {
+            let hasBattery = currentLoadout.includes(0);
+            let hasBlaster = currentLoadout.includes(1);
+            let hasMegaSpike = currentLoadout.includes(8);
+            let hasSpikeBot = currentLoadout.includes(7);
+            let hasMegaShield = currentLoadout.includes(11);
+            let hasShieldBot = currentLoadout.includes(2);
+
+            let warnings = [];
+            if (!hasBattery) warnings.push("not use the battery bot");
+            if (!hasBlaster) warnings.push("not use the blaster bot");
+            if (hasMegaSpike && !hasSpikeBot) warnings.push("do the mega spike without the spike bot");
+            if (hasMegaShield && !hasShieldBot) warnings.push("do the mega shield without the shield bot");
+
+            if (warnings.length > 0) {
+                let msg = "are you sure you want to " + warnings.join(" and ") + "?";
+                document.getElementById('confirmChoiceText').innerText = msg;
+                document.getElementById('confirmChoiceScreen').classList.remove('hidden');
+            } else {
+                startActualGame();
+            }
+        });
+
+        document.getElementById('noChoiceBtn').addEventListener('click', () => {
+            document.getElementById('confirmChoiceScreen').classList.add('hidden');
+        });
+
+        document.getElementById('yesChoiceBtn').addEventListener('click', () => {
+            startActualGame();
         });
 
         // --- Passcode Logic ---
