@@ -3360,7 +3360,9 @@
                             }
                         } else {
                             defender.health -= attacker.damage;
-                            isAttacking = true;
+                            if (attacker.type !== 'phantom') {
+                                isAttacking = true;
+                            }
                         }
                     }
                 }
