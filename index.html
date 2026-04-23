@@ -761,7 +761,8 @@
             { type: 'weaver', hp: 180, speed: 0.35, damage: 1.5, color: '#d946ef', radius: 26, score: 45 },
             { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 },
             { type: 'berserker', hp: 800, speed: 0.25, damage: 3.0, color: '#ea580c', radius: 38, score: 120 },
-            { type: 'shooter', hp: 150, speed: 0.18, damage: 0.3, color: '#38bdf8', radius: 30, score: 40 }
+            { type: 'shooter', hp: 150, speed: 0.18, damage: 0.3, color: '#38bdf8', radius: 30, score: 40 },
+            { type: 'reader', hp: 300, speed: 0.22, damage: 0.5, color: '#fcd34d', radius: 30, score: 30 }
         ];
 
         // --- Custom Bot Canvas Drawing Functions ---
@@ -1950,20 +1951,22 @@
                 if (level >= 10) availableTypes.push(8); // apex
                 if (level >= 11) availableTypes.push(9); // berserker
                 if (level >= 5) availableTypes.push(10); // shooter
+                if (level >= 7) availableTypes.push(11); // reader
 
                 let typeIdx = 0;
                 let roll = Math.random();
                 
                 if (availableTypes.includes(8) && roll > 0.95) typeIdx = 8;
                 else if (availableTypes.includes(9) && roll > 0.90) typeIdx = 9;
-                else if (availableTypes.includes(10) && roll > 0.65) typeIdx = 10;
-                else if (availableTypes.includes(3) && roll > 0.55) typeIdx = 3;
-                else if (availableTypes.includes(5) && roll > 0.62) typeIdx = 5;
-                else if (availableTypes.includes(6) && roll > 0.52) typeIdx = 6;
-                else if (availableTypes.includes(7) && roll > 0.42) typeIdx = 7;
-                else if (availableTypes.includes(4) && roll > 0.32) typeIdx = 4;
-                else if (availableTypes.includes(1) && roll > 0.25) typeIdx = 1;
-                else if (availableTypes.includes(2) && roll > 0.12) typeIdx = 2;
+                else if (availableTypes.includes(10) && roll > 0.76) typeIdx = 10;
+                else if (availableTypes.includes(11) && roll > 0.62) typeIdx = 11;
+                else if (availableTypes.includes(3) && roll > 0.52) typeIdx = 3;
+                else if (availableTypes.includes(5) && roll > 0.42) typeIdx = 5;
+                else if (availableTypes.includes(6) && roll > 0.32) typeIdx = 6;
+                else if (availableTypes.includes(7) && roll > 0.22) typeIdx = 7;
+                else if (availableTypes.includes(4) && roll > 0.15) typeIdx = 4;
+                else if (availableTypes.includes(1) && roll > 0.08) typeIdx = 1;
+                else if (availableTypes.includes(2) && roll > 0.04) typeIdx = 2;
                 else typeIdx = 0;
                 
                 const config = alienConfigs[typeIdx];
@@ -1972,9 +1975,16 @@
                 this.maxHealth = config.hp * hpMultiplier;
                 this.speed = config.speed * speedMultiplier;
                 this.damage = config.damage;
+                this.baseDamage = config.damage;
                 this.color = config.color;
                 this.radius = config.radius;
                 this.scoreValue = config.score;
+                this.width = CELL_SIZE * 0.8;
+                this.height = CELL_SIZE * 0.8;
+                
+                this.originalSpeed = config.speed * speedMultiplier;
+                this.speed = this.originalSpeed;
+                this.movement = this.speed;
                 
                 this.movement = this.speed;
                 this.frameX = 0;
@@ -1993,8 +2003,10 @@
                     ctx.globalAlpha = 0.4 + Math.abs(Math.sin(this.frameX * 0.05)) * 0.6;
                 }
 
+                const isEnraged = this.type === 'reader' && this.health <= this.maxHealth * 0.8;
+
                 // If frozen, override color to be a frosty blue
-                let currentColor = this.burnTimer > 0 ? "#f97316" : (this.freezeTimer > 0 ? "#93c5fd" : this.color);
+                let currentColor = (this.freezeTimer > 0) ? "#93c5fd" : (this.burnTimer > 0 ? "#f97316" : (isEnraged ? "#ef4444" : this.color));
 
 
                 ctx.shadowColor = currentColor;
@@ -2297,39 +2309,79 @@
                     ctx.scale(-1, 1);
                     BotGraphics.drawGun(ctx, 1.0, currentColor, 0);
                     ctx.restore();
+                } else if (this.type === 'reader') {
+                    ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    if (!isEnraged) {
+                        // Draw book
+                        ctx.fillStyle = "#78350f";
+                        ctx.beginPath();
+                        ctx.roundRect(cx - 28, cy + 2, 22, 28, 3);
+                        ctx.fill();
+                        ctx.strokeStyle = "#fff";
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        // White leaf edges
+                        ctx.fillStyle = "#fff";
+                        ctx.fillRect(cx - 26, cy + 4, 18, 24);
+                    }
                 }
                 ctx.shadowBlur = 0;
 
                 // --- Shared cute face ---
                 // Cheeks
-                ctx.fillStyle = "rgba(255, 150, 180, 0.7)";
-                ctx.beginPath();
-                ctx.arc(cx - 14, cy + 2, 4, 0, Math.PI * 2);
-                ctx.arc(cx + 6, cy + 2, 4, 0, Math.PI * 2);
-                ctx.fill();
-                // Eye whites
+                if (!isEnraged) {
+                    ctx.fillStyle = "rgba(255, 150, 180, 0.7)";
+                    ctx.beginPath();
+                    ctx.arc(cx - 14, cy + 2, 4, 0, Math.PI * 2);
+                    ctx.arc(cx + 6, cy + 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Eyes
                 ctx.fillStyle = "#fff";
                 ctx.beginPath();
-                ctx.arc(cx - 8, cy - 4, 6, 0, Math.PI * 2); 
-                ctx.arc(cx + 4, cy - 4, 6, 0, Math.PI * 2); 
+                if (isEnraged) {
+                    // Angry eyes
+                    ctx.moveTo(cx - 14, cy - 8); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx - 14, cy); ctx.closePath();
+                    ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx + 0, cy - 4); ctx.lineTo(cx + 10, cy); ctx.closePath();
+                } else {
+                    ctx.arc(cx - 8, cy - 4, 6, 0, Math.PI * 2); 
+                    ctx.arc(cx + 4, cy - 4, 6, 0, Math.PI * 2); 
+                }
                 ctx.fill();
                 // Pupils
                 ctx.fillStyle = "#020617";
                 ctx.beginPath();
-                ctx.arc(cx - 10, cy - 4, 3.5, 0, Math.PI * 2);
-                ctx.arc(cx + 2, cy - 4, 3.5, 0, Math.PI * 2);
+                if (isEnraged) {
+                    ctx.arc(cx - 10, cy - 3, 2, 0, Math.PI * 2);
+                    ctx.arc(cx + 6, cy - 3, 2, 0, Math.PI * 2);
+                } else {
+                    ctx.arc(cx - 10, cy - 4, 3.5, 0, Math.PI * 2);
+                    ctx.arc(cx + 2, cy - 4, 3.5, 0, Math.PI * 2);
+                }
                 ctx.fill();
-                // Eye highlights
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.arc(cx - 11, cy - 5.5, 1.5, 0, Math.PI * 2);
-                ctx.arc(cx + 1, cy - 5.5, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                // Smile
+                
+                if (!isEnraged) {
+                    // Eye highlights
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(cx - 11, cy - 5.5, 1.5, 0, Math.PI * 2);
+                    ctx.arc(cx + 1, cy - 5.5, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Smile / Frown
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(cx - 2, cy + 4, 3, 0, Math.PI, false);
+                if (isEnraged) {
+                    // Angry frown
+                    ctx.arc(cx - 2, cy + 8, 4, Math.PI, 0, false);
+                } else {
+                    ctx.arc(cx - 2, cy + 4, 3, 0, Math.PI, false);
+                }
                 ctx.stroke();
 
                 ctx.restore(); 
@@ -2348,6 +2400,7 @@
             }
 
             update() {
+                let moving = true;
                 if (this.type === 'shooter') {
                     if (this.shootTimer === undefined) this.shootTimer = 0;
                     // Look for target in row to trigger shooting, but keep moving
@@ -2359,6 +2412,20 @@
                             if (SoundEngine.shoot) SoundEngine.shoot(false);
                             this.shootTimer = 0;
                         }
+                    }
+                }
+
+                if (this.type === 'reader') {
+                    if (this.health <= this.maxHealth * 0.8) {
+                        this.speed = this.originalSpeed * 2.8;
+                        this.damage = this.baseDamage * 0.5;
+                    } else {
+                        this.speed = this.originalSpeed;
+                        this.damage = this.baseDamage;
+                    }
+                    // If not currently stopped by a bot, update movement based on current target speed
+                    if (this.movement !== 0) {
+                        this.movement = this.speed;
                     }
                 }
 
@@ -3450,6 +3517,7 @@
             if (level >= 10) unlockedAliens.push(alienConfigs[8]); 
             if (level >= 11) unlockedAliens.push(alienConfigs[9]); 
             if (level >= 5) unlockedAliens.push(alienConfigs[10]); 
+            if (level >= 7) unlockedAliens.push(alienConfigs[11]); 
             
             unlockedAliens.forEach(alien => {
                 let displayType = alien.type.charAt(0).toUpperCase() + alien.type.slice(1);
@@ -3501,6 +3569,9 @@
                 } else if (alien.type === 'shooter') {
                     desc = "Elite long-range tactician; stops to fire energy bolts.";
                     svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><ellipse cx="30" cy="30" rx="25" ry="20" fill="#020617" stroke="${alien.color}" stroke-width="4"/><rect x="2" y="32" width="18" height="10" rx="2" fill="${alien.color}"/><g>${faceSVG}</g></svg>`;
+                } else if (alien.type === 'reader') {
+                    desc = "Docile until its book is destroyed. Then it gets FURIOUS.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><circle cx="30" cy="30" r="25" fill="#020617" stroke="${alien.color}" stroke-width="4"/><rect x="5" y="35" width="15" height="18" rx="2" fill="#78350f"/><g>${faceSVG}</g></svg>`;
                 }
                 
                 html += `
