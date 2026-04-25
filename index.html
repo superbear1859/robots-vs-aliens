@@ -771,7 +771,8 @@
             { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 240, cooldown: 450, currentCooldown: 0 },
             { id: 20, name: "Punching Bot", cost: 125, color: "#f43f5e", symbol: "🥊", desc: "Rapid Multi-Punch", hp: 1000, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 21, name: "Imitater", cost: 0, color: "#6366f1", symbol: "🎭", desc: "Copies another bot", hp: 100, fireRate: 0, cooldown: 600, currentCooldown: 0 },
-            { id: 22, name: "Ultra Grenade", cost: 350, color: "#0f172a", symbol: "💣", desc: "Giant Bomb fusion", hp: 1000, fireRate: 360, cooldown: 900, currentCooldown: 0 }
+            { id: 22, name: "Ultra Grenade", cost: 350, color: "#0f172a", symbol: "💣", desc: "Giant Bomb fusion", hp: 1000, fireRate: 360, cooldown: 900, currentCooldown: 0 },
+            { id: 23, name: "Frost Gate", cost: 125, color: "#93c5fd", symbol: "🧊", desc: "Freezes projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1361,6 +1362,45 @@
                 ctx.beginPath();
                 ctx.arc(25*s, -35*s, (5 + Math.random()*5)*s, 0, Math.PI * 2);
                 ctx.fill();
+            },
+            23: (ctx, s) => { // Frost Gate - Crystalline portal
+                s = s || 1;
+                // Base
+                ctx.fillStyle = "#334155";
+                ctx.beginPath();
+                ctx.roundRect(-30*s, 15*s, 60*s, 15*s, 5*s);
+                ctx.fill();
+
+                // Two pillars
+                ctx.fillStyle = "#93c5fd";
+                ctx.shadowColor = "#93c5fd";
+                ctx.shadowBlur = 10*s;
+                ctx.beginPath();
+                ctx.roundRect(-25*s, -40*s, 10*s, 60*s, 4*s);
+                ctx.roundRect(15*s, -40*s, 10*s, 60*s, 4*s);
+                ctx.fill();
+
+                // Energy arch
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 3*s;
+                ctx.globalAlpha = 0.6 + (Math.sin(frame/10)*0.2 + 0.2);
+                ctx.beginPath();
+                ctx.moveTo(-15*s, -30*s);
+                ctx.bezierCurveTo(-15*s, -60*s, 15*s, -60*s, 15*s, -30*s);
+                ctx.stroke();
+
+                // Ice crystals floating
+                ctx.fillStyle = "#ffffff";
+                ctx.globalAlpha = 0.9;
+                for(let i=0; i<3; i++) {
+                    let rx = Math.sin(frame/20 + i*2) * 10*s;
+                    let ry = -35*s + Math.cos(frame/15 + i) * 5*s;
+                    ctx.beginPath();
+                    ctx.arc(rx, ry, 3*s, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
             }
         };
 
@@ -1633,6 +1673,7 @@
                 this.digestTimer = 0;
                 
                 this.isFlameBot = card.id === 17;
+                this.isFrostGate = card.id === 23;
                 this.isHomingShooter = card.id === 18;
                 this.isPunchingBot = card.id === 20;
                 this.punchPhase = 'idle'; // idle, punching, waiting
@@ -3162,6 +3203,13 @@
                         <path d="M5 -14 Q10 -20 15 -14" stroke="#78350f" fill="none" stroke-width="2"/>
                         <circle cx="15" cy="-14" r="2" fill="#fbbf24"/>
                     `);
+                case 23: // Frost Gate
+                    return wrap(`
+                        <rect x="-20" y="5" width="40" height="10" rx="2" fill="#334155"/>
+                        <rect x="-15" y="-12" width="6" height="20" rx="1" fill="#93c5fd"/>
+                        <rect x="9" y="-12" width="6" height="20" rx="1" fill="#93c5fd"/>
+                        <path d="M-10 -15 Q0 -25 10 -15" stroke="#fff" fill="none" stroke-width="1.5"/>
+                    `);
                 case 21: // Imitater
                     return wrap(`
                         <circle cx="0" cy="0" r="14" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
@@ -3569,17 +3617,25 @@
                 projectiles[i].update();
                 projectiles[i].draw();
 
-                if (!projectiles[i].isFire && projectiles[i].x > 0) {
+                if (projectiles[i].x > 0) {
                     for (let d = 0; d < defenders.length; d++) {
                         let def = defenders[d];
-                        if (def.isFlameBot && 
-                            projectiles[i].y > def.y && projectiles[i].y < def.y + def.height &&
+                        // Only check gates in the same row/column
+                        if (projectiles[i].y > def.y && projectiles[i].y < def.y + def.height &&
                             projectiles[i].x > def.x && projectiles[i].x < def.x + def.width + 15) {
                             
-                            projectiles[i].isFire = true;
-                            projectiles[i].color = "#f97316";
-                            projectiles[i].damage = Math.floor(projectiles[i].damage * 1.5);
-                            break; // Stop checking other defenders
+                            if (def.isFlameBot && !projectiles[i].isFire) {
+                                projectiles[i].isFire = true;
+                                projectiles[i].isFreeze = false; // Fire melts ice
+                                projectiles[i].color = "#f97316";
+                                projectiles[i].damage = Math.floor(projectiles[i].damage * 1.5);
+                                break;
+                            } else if (def.isFrostGate && !projectiles[i].isFreeze) {
+                                projectiles[i].isFreeze = true;
+                                projectiles[i].isFire = false; // Ice douses fire
+                                projectiles[i].color = "#93c5fd";
+                                break; 
+                            }
                         }
                     }
                 }
@@ -3849,7 +3905,7 @@
             if (level >= 21) unlockedBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
             if (level >= 22) unlockedBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) unlockedBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
-            if (level >= 23) unlockedBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
+            if (level >= 24) unlockedBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -4132,6 +4188,7 @@
             if (level >= 21) pickableBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
             if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
+            if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -4202,6 +4259,7 @@
             if (level >= 21) pickableBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
             if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
+            if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
