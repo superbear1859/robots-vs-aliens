@@ -484,6 +484,7 @@
             <p id="passcodeDesc">Enter passcode to bypass this sector.</p>
             <input type="password" id="passcodeInput" placeholder="Enter Passcode" autocomplete="off" spellcheck="false">
             <input type="number" id="levelSkipInput" class="hidden" placeholder="Target Level" min="1" autocomplete="off">
+            <input type="number" id="scoreInjectInput" class="hidden" placeholder="Score Amount" min="1" autocomplete="off">
             <div id="passcodeError"></div>
             <div class="button-group">
                 <button id="cancelPasscodeBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b);">Cancel</button>
@@ -497,6 +498,17 @@
             <div class="button-group" style="display: flex; gap: 20px;">
                 <button id="noChoiceBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); margin-top: 0; padding: 15px 40px;">No</button>
                 <button id="yesChoiceBtn" class="main-btn" style="margin-top: 0; padding: 15px 40px;">Yes</button>
+            </div>
+        </div>
+
+        <!-- Imitater Selection Modal -->
+        <div id="imitaterModal" class="overlay hidden" style="z-index: 70;">
+            <div class="manual-container" style="width: 85%; max-height: 85%; background: #0f172a; border: 2px solid #6366f1; padding: 25px; border-radius: 15px; box-shadow: 0 0 50px rgba(99, 102, 241, 0.3); overflow-y: auto;">
+                <h2 style="color: #6366f1; margin-bottom: 20px; font-size: 2.5vw; text-align: center;">IMITATER: CHOOSE FORM</h2>
+                <div id="imitaterChoices" class="loadout-pool" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;"></div>
+                <div style="text-align: center; margin-top: 25px;">
+                    <button id="cancelImitaterBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); font-size: 1.2vw;">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
@@ -690,6 +702,8 @@
         canvas.height = CANVAS_HEIGHT;
 
         const CELL_SIZE = 100;
+        let imitaterChoice = null; // Stores the target bot template for Imitater
+        let availableCards = []; // The actual card instances for the current level toolbar
         const TOP_BAR_HEIGHT = 100;
         const MAX_ROWS = 5;
         const COLS = 9;
@@ -731,6 +745,7 @@
             clearCoords: false
         };
 
+        let manualTargetUnit = null; // Currently selected unit for manual targeting
         let selectedCardType = null;
 
         const cardTypes = [
@@ -753,7 +768,10 @@
             { id: 16, name: "Laser Bot", cost: 150, color: "#ef4444", symbol: "☄️", desc: "Piercing beam", hp: 120, fireRate: 150, cooldown: 450, currentCooldown: 0 },
             { id: 17, name: "Flame Bot", cost: 125, color: "#f97316", symbol: "🔥", desc: "Ignites projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 18, name: "Missile Bot", cost: 225, color: "#cbd5e1", symbol: "🚀", desc: "Homing missiles", hp: 150, fireRate: 60, cooldown: 600, currentCooldown: 0 },
-            { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 240, cooldown: 450, currentCooldown: 0 }
+            { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 240, cooldown: 450, currentCooldown: 0 },
+            { id: 20, name: "Punching Bot", cost: 125, color: "#f43f5e", symbol: "🥊", desc: "Rapid Multi-Punch", hp: 1000, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 21, name: "Imitater", cost: 0, color: "#6366f1", symbol: "🎭", desc: "Copies another bot", hp: 100, fireRate: 0, cooldown: 600, currentCooldown: 0 },
+            { id: 22, name: "Ultra Grenade", cost: 350, color: "#0f172a", symbol: "💣", desc: "Giant Bomb fusion", hp: 1000, fireRate: 360, cooldown: 900, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1252,6 +1270,97 @@
                 ctx.beginPath();
                 ctx.arc(8*s, -10*s, 2*s, 0, Math.PI*2);
                 ctx.fill();
+            },
+            // 20: Punching Bot
+            20: function(ctx, s, info) {
+                s = s || 1;
+                // Base body
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-15*s, -15*s, 30*s, 30*s, 8*s);
+                ctx.fill();
+                ctx.strokeStyle = "#334155";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+
+                // Cybervisor
+                ctx.fillStyle = "#f43f5e";
+                ctx.fillRect(-10*s, -8*s, 20*s, 5*s);
+                ctx.shadowColor = "#f43f5e";
+                ctx.shadowBlur = 5*s;
+                ctx.fillRect(-10*s, -8*s, 20*s, 2*s);
+                ctx.shadowBlur = 0;
+
+                // Shoulder joint
+                ctx.fillStyle = "#64748b";
+                ctx.beginPath();
+                ctx.arc(8*s, 5*s, 6*s, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Arm/Glove extension logic
+                let extension = 0;
+                if (info && info.phase === 'punching') {
+                    extension = Math.sin((info.timer % 8) / 8 * Math.PI) * 110;
+                }
+                
+                // Arm segment
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineWidth = 4*s;
+                ctx.beginPath();
+                ctx.moveTo(8*s, 5*s);
+                ctx.lineTo((8 + extension)*s, 5*s);
+                ctx.stroke();
+                
+                // Power glove
+                ctx.fillStyle = "#f43f5e";
+                ctx.beginPath();
+                ctx.roundRect((extension)*s, -8*s, 16*s, 20*s, 5*s);
+                ctx.fill();
+                ctx.strokeStyle = "#fda4af";
+                ctx.lineWidth = 1.5*s;
+                ctx.stroke();
+
+                // Energy pulses on glove
+                if (info && info.phase === 'punching') {
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc((8 + extension)*s, 0, 3*s, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+            22: (ctx, s) => { // Ultra Grenade - Massive sphere
+                s = s || 1;
+                // Double wide chassis
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.roundRect(-45*s, -15*s, 90*s, 30*s, 8*s);
+                ctx.fill();
+
+                // The Bomb
+                ctx.fillStyle = "#020617";
+                ctx.shadowColor = "#475569";
+                ctx.shadowBlur = 10*s;
+                ctx.beginPath();
+                ctx.arc(0, 0, 35*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 3*s;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Fuse
+                ctx.strokeStyle = "#78350f";
+                ctx.lineWidth = 4*s;
+                ctx.beginPath();
+                ctx.moveTo(0, -35*s);
+                ctx.quadraticCurveTo(15*s, -50*s, 25*s, -35*s);
+                ctx.stroke();
+
+                // Spark
+                ctx.fillStyle = "#fbbf24";
+                ctx.beginPath();
+                ctx.arc(25*s, -35*s, (5 + Math.random()*5)*s, 0, Math.PI * 2);
+                ctx.fill();
             }
         };
 
@@ -1344,7 +1453,7 @@
 
         fullscreenBtn.addEventListener('click', () => {
             const doc = document.documentElement;
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullscreenElement || document.msFullscreenElement;
             
             if (!isFullscreen) {
                 if (doc.requestFullscreen) doc.requestFullscreen();
@@ -1360,7 +1469,7 @@
         });
 
         function handleFullscreenChange() {
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullscreenElement || document.msFullscreenElement;
             if (isFullscreen) {
                 fsIconEnter.style.display = 'none';
                 fsIconExit.style.display = 'block';
@@ -1525,8 +1634,22 @@
                 
                 this.isFlameBot = card.id === 17;
                 this.isHomingShooter = card.id === 18;
+                this.isPunchingBot = card.id === 20;
+                this.punchPhase = 'idle'; // idle, punching, waiting
+                this.punchTimer = 0;
+                this.punchCount = 0;
                 
                 this.armed = false; 
+
+                if (this.card.isImitater) {
+                    this.isImitater = true;
+                    this.targetId = this.card.targetId;
+                }
+                if (this.card.id === 22) {
+                    this.isUltraGrenade = true;
+                    this.width = CELL_SIZE * 2;
+                    this.currentManualCooldown = 0;
+                }
             }
 
             isSpikesExtended() {
@@ -1605,7 +1728,20 @@
                         let symbol = multiSymbols[Math.min(this.multiCount - 1, 4)] || "5️⃣";
                         ctx.fillText(symbol, cx, cy + cyOffset);
                     } else {
-                        ctx.fillText(this.card.symbol, cx, cy + cyOffset);
+                    if (this.isPunchingBot && this.punchPhase === 'punching') {
+                        let punchOffset = Math.sin((this.punchTimer % 8) / 8 * Math.PI) * 80;
+                        ctx.save();
+                        ctx.translate(cx + punchOffset, cy + cyOffset);
+                        ctx.scale(-1, 1);
+                        ctx.fillText(this.card.symbol, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.save();
+                        ctx.translate(cx, cy + cyOffset);
+                        ctx.scale(-1, 1);
+                        ctx.fillText(this.card.symbol, 0, 0);
+                        ctx.restore();
+                    }
                     }
                     
                     if (this.isChomp && this.chompState === 'digesting') {
@@ -1641,6 +1777,10 @@
                 ctx.shadowColor = this.card.color;
                 ctx.shadowBlur = 10;
                 
+                if (this.isUltraGrenade) {
+                    if (this.currentManualCooldown > 0) this.currentManualCooldown--;
+                }
+
                 if (this.isFlameBot) {
                     ctx.globalAlpha = 0.85 + Math.random() * 0.15;
                     ctx.shadowBlur = 15 + Math.random() * 10;
@@ -1756,7 +1896,18 @@
                             ctx.fillText(dots, 0, -25);
                         }
                     } else if (BotGraphics[this.card.id]) {
-                        BotGraphics[this.card.id](ctx, 1, this.card.id === 13 ? this.multiCount : undefined);
+                        BotGraphics[this.card.id](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
+                    }
+                    
+                    // Manual Targeting Highlight
+                    if (manualTargetUnit === this) {
+                        ctx.strokeStyle = "#fbbf24";
+                        ctx.lineWidth = 4;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.roundRect(-this.width/2 - 5, -this.height/2 - 5, this.width + 10, this.height + 10, 12);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
                     }
                     
                     ctx.restore();
@@ -1802,6 +1953,40 @@
                         this.digestTimer--;
                         if (this.digestTimer <= 0) {
                             this.chompState = 'idle';
+                        }
+                    }
+                }
+
+                if (this.isPunchingBot) {
+                    if (this.punchPhase === 'idle') {
+                        // Look for alien in same row and close proximity in front
+                        let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                        if (alienAhead) {
+                            this.punchPhase = 'punching';
+                            this.punchTimer = 0;
+                            this.punchCount = 0;
+                        }
+                    } else if (this.punchPhase === 'punching') {
+                        this.punchTimer++;
+                        // One punch every 8 frames (quick)
+                        if (this.punchTimer % 8 === 0) {
+                            this.punchCount++;
+                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                            if (alienAhead) {
+                                alienAhead.health -= 60; // Potent melee hits
+                                SoundEngine.hit();
+                                floatingTexts.push(new FloatingText(this.x + CELL_SIZE, this.y + 20, "POW!", "244, 63, 94", 0.8));
+                            }
+                        }
+                        if (this.punchCount >= 5) {
+                            this.punchPhase = 'waiting';
+                            this.punchTimer = 0;
+                        }
+                    } else if (this.punchPhase === 'waiting') {
+                        this.punchTimer++;
+                        if (this.punchTimer >= 60) { // 1 second delay
+                            this.punchPhase = 'idle';
+                            this.punchTimer = 0;
                         }
                     }
                 }
@@ -1887,15 +2072,15 @@
 
                     if (this.isTripleShooter) {
                         if (alienInLane || alienAbove || alienBelow) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
-                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
-                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, isPlasma, isFreeze, isLaser, false, isGrenade));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
@@ -1910,13 +2095,13 @@
                             ];
                             let pos = positions[this.multiCount];
                             for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, isPlasma, isFreeze, isLaser, false, isGrenade));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, isPlasma, isFreeze, isLaser, false, isGrenade));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     }
@@ -1930,7 +2115,7 @@
 
                 if (this.isHomingShooter && this.timer % this.card.fireRate === 0) {
                     if (attackers.length > 0) {
-                        projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, false, false, false, true));
+                        projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 6, 12, "#f43f5e", 0, false, false, false, true, false));
                         SoundEngine.missile();
                         this.offsetX = 5;
                         setTimeout(() => this.offsetX = 10, 100);
@@ -2504,43 +2689,77 @@
         }
 
         class Projectile {
-            constructor(x, y, isPlasma, isFreeze = false, isLaser = false, isHoming = false, isGrenade = false) {
+            constructor(x, y, radius, damage, color, range, isPlasma, isFreeze, isGrenade, isHoming, isManual, targetX, targetY, isUltraGrenade, isLaser) {
                 this.x = x;
                 this.y = y;
-                this.isPlasma = isPlasma;
-                this.isFreeze = isFreeze;
-                this.isLaser = isLaser;
-                this.isHoming = isHoming;
-                this.isGrenade = isGrenade;
+                this.startX = x;
+                this.startY = y;
+                this.radius = radius || 5;
+                this.damage = damage || 20;
+                this.color = color || "#38bdf8";
+                this.range = range || 0;
+                this.isPlasma = isPlasma || false;
+                this.isFreeze = isFreeze || false;
+                this.isGrenade = isGrenade || false;
+                this.isHoming = isHoming || false;
+                this.isManual = isManual || false;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.isUltraGrenade = isUltraGrenade || false;
+                this.isLaser = isLaser || false;
+                
                 this.target = null;
-                this.speed = isHoming ? 4 : (isLaser ? 15 : (isPlasma ? 8 : (isFreeze ? 7 : (isGrenade ? 3 : 5))));
-                this.damage = isHoming ? 12 : (isLaser ? 12 : (isPlasma ? 50 : (isFreeze ? 15 : (isGrenade ? 200 : 20)))); // Grenade does 200 damage (1/10 of bomb)
-                this.radius = isHoming ? 6 : (isLaser ? 4 : (isPlasma ? 8 : (isFreeze ? 6 : (isGrenade ? 7 : 5))));
-                this.color = isHoming ? "#f43f5e" : (isLaser ? "#ef4444" : (isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : (isGrenade ? "#475569" : "#38bdf8"))));
-                this.hit = false;
+                this.speed = this.isManual ? 6 : (this.isHoming ? 4 : (this.isLaser ? 15 : (this.isPlasma ? 8 : (this.isFreeze ? 7 : (this.isGrenade ? 3 : 5)))));
+                this.lifeTimer = 0;
+                this.active = true;
                 this.hitTargets = new Set();
+
+                if (this.isManual) {
+                    let dx = this.targetX - this.x;
+                    let dy = this.targetY - this.y;
+                    let dist = Math.hypot(dx, dy);
+                    this.totalFrames = dist / this.speed;
+                }
             }
 
             draw() {
+                ctx.save();
                 ctx.shadowColor = this.color;
                 ctx.shadowBlur = 10;
                 ctx.fillStyle = this.color;
                 
-                if (this.isLaser) {
-                    // Draw a long laser beam
+                let drawX = this.x;
+                let drawY = this.y;
+
+                // Parabolic arc for manual bombs
+                if (this.isManual) {
+                    let progress = Math.min(1, this.lifeTimer / (this.totalFrames || 1));
+                    let arcH = Math.sin(progress * Math.PI) * -200;
+                    
+                    // Bomb Shadow
+                    ctx.save();
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = "#000";
                     ctx.beginPath();
-                    ctx.roundRect(this.x - 30, this.y - 3, 60, 6, 2);
+                    ctx.ellipse(this.x, this.y, 15, 8, 0, 0, Math.PI * 2);
                     ctx.fill();
-                    // Core highlight
+                    ctx.restore();
+                    
+                    drawY += arcH;
+                }
+                
+                ctx.translate(drawX, drawY);
+
+                if (this.isLaser) {
+                    ctx.beginPath();
+                    ctx.roundRect(-30, -3, 60, 6, 2);
+                    ctx.fill();
                     ctx.fillStyle = "#fff";
                     ctx.beginPath();
-                    ctx.roundRect(this.x - 20, this.y - 1, 40, 2, 1);
+                    ctx.roundRect(-20, -1, 40, 2, 1);
                     ctx.fill();
                 } else if (this.isHoming) {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
                     if (this.angle !== undefined) ctx.rotate(this.angle);
-                    
                     ctx.beginPath();
                     ctx.roundRect(-8, -4, 16, 8, 2);
                     ctx.fill();
@@ -2548,53 +2767,60 @@
                     ctx.beginPath();
                     ctx.moveTo(-8, -4); ctx.lineTo(-12, -6); ctx.lineTo(-10, 0); ctx.lineTo(-12, 6); ctx.lineTo(-8, 4); 
                     ctx.fill();
-                    
-                    ctx.restore();
                 } else if (this.isFreeze) {
-                    // Draw sharp icicle projectile
                     ctx.beginPath();
-                    ctx.moveTo(this.x + 12, this.y); // Sharp tip pointing forward
-                    ctx.lineTo(this.x - 10, this.y - 4); // Top back
-                    ctx.lineTo(this.x - 10, this.y + 4); // Bottom back
+                    ctx.moveTo(12, 0);
+                    ctx.lineTo(-10, -4);
+                    ctx.lineTo(-10, 4);
                     ctx.closePath();
                     ctx.fill();
-                    
-                    // Add a tiny white highlight to make it look like reflective ice
-                    ctx.fillStyle = "#ffffff";
+                    ctx.fillStyle = "#fff";
                     ctx.beginPath();
-                    ctx.moveTo(this.x + 8, this.y);
-                    ctx.lineTo(this.x - 8, this.y - 2);
-                    ctx.lineTo(this.x - 8, this.y);
+                    ctx.moveTo(8, 0);
+                    ctx.lineTo(-8, -2);
+                    ctx.lineTo(-8, 0);
                     ctx.closePath();
                     ctx.fill();
                 } else if (this.isGrenade) {
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = "#facc15";
                     ctx.lineWidth = 1.5;
                     ctx.beginPath();
-                    ctx.moveTo(this.x, this.y - this.radius);
-                    ctx.quadraticCurveTo(this.x + 4, this.y - this.radius - 4, this.x + 2, this.y - this.radius - 6);
+                    ctx.moveTo(0, -this.radius);
+                    ctx.quadraticCurveTo(4, -this.radius - 4, 2, -this.radius - 6);
                     ctx.stroke();
                 } else {
-                    // Standard plasma/blaster projectile
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
                     ctx.fill();
-                    
                     ctx.strokeStyle = this.color;
                     ctx.lineWidth = this.radius;
                     ctx.beginPath();
-                    ctx.moveTo(this.x, this.y);
-                    ctx.lineTo(this.x - 15, this.y);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-15, 0);
                     ctx.stroke();
                 }
                 
+                ctx.restore();
                 ctx.shadowBlur = 0;
             }
 
             update() {
+                this.lifeTimer++;
+
+                if (this.isManual) {
+                    let progress = this.lifeTimer / (this.totalFrames || 1);
+                    this.x = this.startX + (this.targetX - this.startX) * progress;
+                    this.y = this.startY + (this.targetY - this.startY) * progress;
+                    
+                    if (progress >= 1) {
+                        this.active = false; // Trigger explosion in the logic loop
+                    }
+                    return;
+                }
+
                 if (this.isHoming) {
                     if (!this.target || this.target.health <= 0 || !attackers.includes(this.target)) {
                         // Find closest target
@@ -2922,6 +3148,28 @@
                         <line x1="-2" y1="0" x2="8" y2="-10" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
                         <circle cx="8" cy="-10" r="2" fill="#020617"/>
                     `);
+                case 20: // Punching Bot
+                    return wrap(`
+                        <rect x="-15" y="-15" width="30" height="30" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                        <rect x="-10" y="-8" width="20" height="5" fill="#f43f5e"/>
+                        <circle cx="8" cy="5" r="5" fill="#64748b"/>
+                        <rect x="2" y="-8" width="16" height="20" rx="5" fill="#f43f5e" stroke="#fda4af" stroke-width="1.5"/>
+                    `);
+                case 22: // Ultra Grenade
+                    return wrap(`
+                        <rect x="-20" y="-10" width="40" height="20" rx="4" fill="#1e293b"/>
+                        <circle cx="0" cy="0" r="14" fill="#020617" stroke="#475569" stroke-width="1.5"/>
+                        <path d="M5 -14 Q10 -20 15 -14" stroke="#78350f" fill="none" stroke-width="2"/>
+                        <circle cx="15" cy="-14" r="2" fill="#fbbf24"/>
+                    `);
+                case 21: // Imitater
+                    return wrap(`
+                        <circle cx="0" cy="0" r="14" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
+                        <path d="M-8 -6 Q0 -10 8 -6 L8 4 Q0 8 -8 4 Z" fill="#fff"/>
+                        <circle cx="-3" cy="-1" r="1.5" fill="#000"/>
+                        <circle cx="3" cy="-1" r="1.5" fill="#000"/>
+                        <path d="M-2 4 Q0 6 2 4" stroke="#000" fill="none" stroke-width="1"/>
+                    `);
                 default:
                     return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
             }
@@ -3010,17 +3258,6 @@
             let cardHeight = 85;
             let cardGap = 8;
 
-            let availableCards = [];
-            for (let id of currentLoadout) {
-                let found = cardTypes.find(c => c && c.id === id);
-                if (found) availableCards.push(found);
-            }
-            
-            if (level >= 6) {
-                let drill = cardTypes.find(c => c && c.id === 6); // Drill tool automatically added if unlocked
-                if (drill) availableCards.push(drill); 
-            }
-
             for (let i = 0; i < availableCards.length; i++) {
                 let card = availableCards[i];
                 if (!card) continue; // Robust null-check
@@ -3079,8 +3316,16 @@
                     } else {
                         ctx.fillText(card.symbol, 0, 0);
                     }
-                } else if (BotGraphics[card.id]) {
-                    BotGraphics[card.id](ctx, 0.65, card.id === 13 ? 5 : undefined);
+                } else if (BotGraphics[card.isImitater ? card.targetId : card.id]) {
+                    BotGraphics[card.isImitater ? card.targetId : card.id](ctx, 0.65, (card.isImitater ? card.targetId : card.id) === 13 ? 5 : undefined);
+                }
+                
+                // If Imitater, overlay a purple tint to the graphic
+                if (card.isImitater) {
+                    ctx.fillStyle = "rgba(99, 102, 241, 0.3)";
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                    ctx.fill();
                 }
                 
                 ctx.restore();
@@ -3134,6 +3379,29 @@
             let startY = getGridStartY();
             let inGrid = mouse.y > startY && mouse.y < startY + (activeRows * CELL_SIZE) && mouse.x > GRID_START_X && mouse.x < GRID_START_X + (COLS * CELL_SIZE);
 
+            // --- Manual Targeting Management ---
+            if (mouse.clicked && selectedCardType === null) {
+                if (manualTargetUnit) {
+                    // Fire Manual Bomb!
+                    let sx = manualTargetUnit.x + manualTargetUnit.width/2;
+                    let sy = manualTargetUnit.y + manualTargetUnit.height/2;
+                    projectiles.push(new Projectile(sx, sy, 30, 800, "#020617", 2000, false, false, true, false, true, mouse.x, mouse.y, true));
+                    SoundEngine.shoot();
+                    manualTargetUnit.currentManualCooldown = manualTargetUnit.card.fireRate;
+                    manualTargetUnit = null;
+                    mouse.clicked = false;
+                } else {
+                    // Try selecting a ready manual unit
+                    let clickedManual = defenders.find(d => d.isUltraGrenade && d.currentManualCooldown <= 0 && 
+                        mouse.x > d.x && mouse.x < d.x + d.width && mouse.y > d.y && mouse.y < d.y + d.height);
+                    if (clickedManual) {
+                        manualTargetUnit = clickedManual;
+                        mouse.clicked = false;
+                        SoundEngine.drill(); // Click sound
+                    }
+                }
+            }
+
             if ((mouse.clicked || mouse.dropped) && selectedCardType !== null) {
                 if (inGrid) {
                     let gridX = mouse.x - (mouse.x - GRID_START_X) % CELL_SIZE;
@@ -3147,7 +3415,7 @@
                         }
                     }
 
-                    let card = cardTypes.find(c => c && c.id === selectedCardType);
+                    let card = availableCards.find(c => c && c.id === selectedCardType);
                     if (!card) {
                         selectedCardType = null;
                         mouse.clicked = false;
@@ -3188,6 +3456,22 @@
                         }
                         mouse.clicked = false; 
                         mouse.dropped = false;
+                    } else if (selectedCardType === 22) { // Ultra Grenade fusion
+                        let def1 = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
+                        let def2 = defenders.find(d => d.x === gridX + CELL_SIZE && d.y === gridY && d.card.id === 19);
+                        if (def1 && def2) {
+                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                                defenders.splice(defenders.indexOf(def1), 1);
+                                defenders.splice(defenders.indexOf(def2), 1);
+                                defenders.push(new Defender(gridX, gridY, card));
+                                energy -= card.cost;
+                                card.currentCooldown = card.cooldown;
+                                selectedCardType = null;
+                                SoundEngine.place();
+                            }
+                        }
+                        mouse.clicked = false;
+                        mouse.dropped = false;
                     } else if (selectedCardType === 13) { // Multi Bot logic
                         if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 13) {
                             // Upgrade existing Multi Bot
@@ -3217,7 +3501,8 @@
                     } else { // Normal Bot Placement
                         if (defenderIndex === -1) {
                             if (energy >= card.cost && card.currentCooldown <= 0) {
-                                defenders.push(new Defender(gridX, gridY, card));
+                                let placementCard = card.isImitater ? cardTypes.find(c => c.id === card.targetId) : card;
+                                defenders.push(new Defender(gridX, gridY, placementCard));
                                 energy -= card.cost;
                                 card.currentCooldown = card.cooldown; 
                                 selectedCardType = null; 
@@ -3299,10 +3584,27 @@
                     }
                 }
 
-                let projHit = false;
 
+                if (projectiles[i].isManual && !projectiles[i].active) {
+                    // Explode at Target
+                    let radius = projectiles[i].isUltraGrenade ? 3 * CELL_SIZE : 1.5 * CELL_SIZE;
+                    explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
+                    for (let a = 0; a < attackers.length; a++) {
+                        if (Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
+                            attackers[a].health -= projectiles[i].damage;
+                            if (projectiles[i].isFire) attackers[a].burnTimer = 180;
+                            if (projectiles[i].isFreeze) attackers[a].freezeTimer = 180;
+                        }
+                    }
+                    SoundEngine.explosion();
+                    projectiles.splice(i, 1);
+                    i--;
+                    continue;
+                }
+
+                let projHit = false;
                 for (let j = 0; j < attackers.length; j++) {
-                    if (attackers[j] && projectiles[i] && 
+                    if (attackers[j] && projectiles[i] && !projectiles[i].isManual && 
                         projectiles[i].x > attackers[j].x && 
                         projectiles[i].x < attackers[j].x + attackers[j].width &&
                         projectiles[i].y > attackers[j].y && 
@@ -3324,10 +3626,13 @@
                         }
 
                         if (projectiles[i].isGrenade) {
-                            explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, 1.5 * CELL_SIZE));
+                            let radius = projectiles[i].isUltraGrenade ? 3 * CELL_SIZE : 1.5 * CELL_SIZE;
+                            explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
                             for (let a = 0; a < attackers.length; a++) {
-                                if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= 1.5 * CELL_SIZE) {
+                                if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
                                     attackers[a].health -= projectiles[i].damage;
+                                    if (projectiles[i].isFire) attackers[a].burnTimer = 180;
+                                    if (projectiles[i].isFreeze) attackers[a].freezeTimer = 180;
                                 }
                             }
                             SoundEngine.explosion();
@@ -3541,6 +3846,10 @@
             if (level >= 18) unlockedBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) unlockedBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
             if (level >= 20) unlockedBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
+            if (level >= 21) unlockedBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
+            if (level >= 22) unlockedBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
+            if (level >= 23) unlockedBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
+            if (level >= 23) unlockedBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -3585,9 +3894,9 @@
                     <circle cx="22" cy="26" r="6" fill="#fff"/>
                     <circle cx="34" cy="26" r="6" fill="#fff"/>
                     <circle cx="20" cy="26" r="3.5" fill="#020617"/>
-                    <circle cx="32" cy="26" r="3.5" fill="#020617"/>
+                    <circle cx="34" cy="26" r="3.5" fill="#020617"/>
                     <circle cx="19" cy="24.5" r="1.5" fill="#fff"/>
-                    <circle cx="31" cy="24.5" r="1.5" fill="#fff"/>
+                    <circle cx="33" cy="24.5" r="1.5" fill="#fff"/>
                     <path d="M 25 34 A 3 3 0 0 0 31 34" fill="none" stroke="#fff" stroke-width="2"/>
                 `;
 
@@ -3645,7 +3954,7 @@
 
         function drawCursorPreview() {
             if (selectedCardType !== null && mouse.x !== undefined && mouse.y !== undefined) {
-                let card = cardTypes.find(c => c && c.id === selectedCardType);
+                let card = availableCards.find(c => c && c.id === selectedCardType);
                 if (!card) return;
                 
                 ctx.save();
@@ -3667,10 +3976,30 @@
                     } else {
                         ctx.fillText(card.symbol, 0, 0);
                     }
-                } else if (BotGraphics[card.id]) {
-                    BotGraphics[card.id](ctx, 1.2, card.id === 13 ? 5 : undefined);
+                } else if (BotGraphics[card.isImitater ? card.targetId : card.id]) {
+                    BotGraphics[card.isImitater ? card.targetId : card.id](ctx, 1.2, (card.isImitater ? card.targetId : card.id) === 13 ? 5 : undefined);
                 }
                 
+                ctx.restore();
+            }
+            
+            // Manual Targeting Reticle
+            if (manualTargetUnit && mouse.x !== undefined) {
+                ctx.save();
+                ctx.strokeStyle = "#fbbf24";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, 15, 0, Math.PI * 2);
+                ctx.moveTo(mouse.x - 25, mouse.y);
+                ctx.lineTo(mouse.x + 25, mouse.y);
+                ctx.moveTo(mouse.x, mouse.y - 25);
+                ctx.lineTo(mouse.x, mouse.y + 25);
+                ctx.stroke();
+                
+                ctx.fillStyle = "#fbbf24";
+                ctx.font = "bold 12px Orbitron";
+                ctx.textAlign = "center";
+                ctx.fillText("CHOOSE TARGET", mouse.x, mouse.y - 35);
                 ctx.restore();
             }
         }
@@ -3744,6 +4073,31 @@
             energy = level === 1 ? 150 : 50;
             gameOver = false;
             selectedCardType = null;
+
+            // Initialize level specific card instances
+            availableCards = [];
+            for (let id of currentLoadout) {
+                let template = cardTypes.find(c => c && c.id === id);
+                if (template) {
+                    let cardInstance = {...template, currentCooldown: 0};
+                    if (id === 21 && imitaterChoice) {
+                        // Inherit from choice but keep Imitater signature
+                        cardInstance.name = `Imi ${imitaterChoice.name}`;
+                        cardInstance.cost = imitaterChoice.cost;
+                        cardInstance.hp = imitaterChoice.hp;
+                        cardInstance.fireRate = imitaterChoice.fireRate;
+                        cardInstance.cooldown = imitaterChoice.cooldown;
+                        cardInstance.symbol = imitaterChoice.symbol;
+                        cardInstance.targetId = imitaterChoice.id; // Secret ref for Defender creation
+                        cardInstance.isImitater = true;
+                    }
+                    availableCards.push(cardInstance);
+                }
+            }
+            if (level >= 6) {
+                let drill = cardTypes.find(c => c && c.id === 6);
+                if (drill) availableCards.push({...drill, currentCooldown: 0});
+            }
             
             nextAlienSpawnTime = 1020; 
             
@@ -3775,6 +4129,9 @@
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
             if (level >= 20) pickableBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
+            if (level >= 21) pickableBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
+            if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
+            if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -3842,6 +4199,9 @@
             if (level >= 18) pickableBots.push(cardTypes.find(c => c.id === 17)); // Flame Bot
             if (level >= 19) pickableBots.push(cardTypes.find(c => c.id === 18)); // Missile Bot
             if (level >= 20) pickableBots.push(cardTypes.find(c => c.id === 19)); // Grenade Bot
+            if (level >= 21) pickableBots.push(cardTypes.find(c => c.id === 20)); // Punching Bot
+            if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
+            if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
@@ -3905,6 +4265,10 @@
                 
                 if (!isSelected) {
                     cardDiv.onclick = () => {
+                        if (bot.id === 21) {
+                            openImitaterSelection(pickableBots.filter(b => b && b.id !== 21));
+                            return;
+                        }
                         if (currentLoadout.length < maxSlots) {
                             currentLoadout.push(bot.id);
                             renderLoadout();
@@ -3964,6 +4328,39 @@
             levelStartScore = score; // Save current score as the new baseline for the next level
             openLoadoutScreen();
         });
+
+        function openImitaterSelection(options) {
+            const container = document.getElementById('imitaterChoices');
+            const modal = document.getElementById('imitaterModal');
+            container.innerHTML = '';
+            
+            options.forEach(bot => {
+                let cardDiv = document.createElement('div');
+                cardDiv.className = 'loadout-card hoverable';
+                cardDiv.style.border = `2px solid ${bot.color}`;
+                cardDiv.style.background = '#1e293b';
+                cardDiv.innerHTML = `
+                    <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
+                        ${getBotSymbolHTML(bot)}
+                    </div>
+                    <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center;">${bot.name}</span>
+                `;
+                cardDiv.onclick = () => {
+                    imitaterChoice = bot; // Store the template
+                    if (!currentLoadout.includes(21)) {
+                        if (currentLoadout.length < maxSlots) {
+                            currentLoadout.push(21);
+                        }
+                    }
+                    modal.classList.add('hidden');
+                    renderLoadout();
+                };
+                container.appendChild(cardDiv);
+            });
+
+            document.getElementById('cancelImitaterBtn').onclick = () => modal.classList.add('hidden');
+            modal.classList.remove('hidden');
+        }
 
         document.getElementById('buySlotBtn').addEventListener('click', () => {
             if (score >= 2050 && !extraSlotPurchased) {
@@ -4047,6 +4444,7 @@
             document.getElementById('passcodeInput').value = '';
             document.getElementById('levelSkipInput').value = level + 1;
             document.getElementById('levelSkipInput').classList.remove('hidden');
+            document.getElementById('scoreInjectInput').classList.add('hidden');
             document.getElementById('passcodeError').innerText = '';
             document.getElementById('passcodeInput').focus();
         });
@@ -4055,9 +4453,11 @@
             adminScreen.classList.add('hidden');
             passcodeAction = 'score';
             document.getElementById('passcodeTitle').innerText = 'Score Inject';
-            document.getElementById('passcodeDesc').innerText = 'Enter passcode to earn 2000 points.';
+            document.getElementById('passcodeDesc').innerText = 'Enter amount and passcode.';
             document.getElementById('passcodeScreen').classList.remove('hidden');
             document.getElementById('passcodeInput').value = '';
+            document.getElementById('scoreInjectInput').value = 2000;
+            document.getElementById('scoreInjectInput').classList.remove('hidden');
             document.getElementById('levelSkipInput').classList.add('hidden');
             document.getElementById('passcodeError').innerText = '';
             document.getElementById('passcodeInput').focus();
@@ -4065,6 +4465,8 @@
 
         document.getElementById('cancelPasscodeBtn').addEventListener('click', () => {
             document.getElementById('passcodeScreen').classList.add('hidden');
+            document.getElementById('levelSkipInput').classList.add('hidden');
+            document.getElementById('scoreInjectInput').classList.add('hidden');
             gameRunning = true;
             animate(); // Resume the game
         });
@@ -4085,10 +4487,13 @@
                 }
             } else if (passcodeAction === 'score') {
                 if (input === "67super1859") {
+                    let amount = parseInt(document.getElementById('scoreInjectInput').value);
+                    if (isNaN(amount) || amount < 0) amount = 2000;
+
                     document.getElementById('passcodeScreen').classList.add('hidden');
-                    score += 2000;
-                    levelStartScore += 2000; // Track it so a "Retry" doesn't wipe these points
-                    floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `+2000 PTS`, "250, 204, 21"));
+                    score += amount;
+                    levelStartScore += amount; // Track it so a "Retry" doesn't wipe these points
+                    floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, `+${amount} PTS`, "250, 204, 21"));
                     SoundEngine.energy(); 
                     gameRunning = true;
                     animate(); // Resume the game with points injected
