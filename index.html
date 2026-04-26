@@ -416,6 +416,7 @@
             <svg id="fsIconExit" style="display: none;" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
         </button>
         <button id="adminMenuBtn" class="in-game-btn" style="top: 5px; left: 5px; z-index: 100; bottom: auto; right: auto; width: auto; min-width: 0; padding: 10px 15px; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;">⚙</button>
+        <div id="ultraCounter" class="in-game-btn" style="top: 5px; left: 62px; z-index: 100; bottom: auto; right: auto; width: 60px; min-width: 0; padding: 10px 5px; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; background: rgba(168, 85, 247, 0.4); cursor: pointer; border: 2px solid #a855f7; transition: all 0.3s ease;">⚡ 0</div>
         
         <div id="splashScreen" class="overlay" style="z-index: 20; background: #050510; transition: opacity 1.5s ease;">
             <h2 id="splashText" style="font-size: 3vw; text-transform: uppercase; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); opacity: 0; transition: opacity 1.5s ease;">Superbear Presents</h2>
@@ -475,6 +476,7 @@
                 <button id="toggleGraphicsBtn" class="main-btn" style="background: linear-gradient(45deg, #8b5cf6, #a855f7); width: 100%; max-width: 350px;">Switch to Simple Graphics</button>
                 <button id="addScoreBtn" class="main-btn" style="background: linear-gradient(45deg, #22c55e, #10b981); width: 100%; max-width: 350px;">Earn 2000 Pts</button>
                 <button id="skipBtn" class="main-btn" style="background: linear-gradient(45deg, #f43f5e, #ef4444); width: 100%; max-width: 350px;">Skip Level</button>
+                <button id="cheatBtn" class="main-btn" style="background: linear-gradient(45deg, #fbbf24, #f59e0b); width: 100%; max-width: 350px;">Enter Global Passcode</button>
                 <button id="closeAdminBtn" class="main-btn" style="background: linear-gradient(45deg, #475569, #64748b); margin-top: 20px;">Close Menu</button>
             </div>
         </div>
@@ -688,6 +690,7 @@
         const toggleGraphicsBtn = document.getElementById('toggleGraphicsBtn');
         const adminMenuBtn = document.getElementById('adminMenuBtn');
         const adminScreen = document.getElementById('adminScreen');
+        const ultraCounter = document.getElementById('ultraCounter');
         const closeAdminBtn = document.getElementById('closeAdminBtn');
         const skipBtn = document.getElementById('skipBtn');
         const addScoreBtn = document.getElementById('addScoreBtn');
@@ -717,6 +720,8 @@
         let levelStartScore = 0; // Tracks score at the beginning of a level
         let wave = 1;
         let energy = 200;
+        let ultraElectricity = 0;
+        let usingUltra = false;
         let gameOver = false;
         let gameRunning = false;
         let animationId;
@@ -787,7 +792,8 @@
             { type: 'apex', hp: 1500, speed: 0.05, damage: 5.0, color: '#dc2626', radius: 48, score: 150 },
             { type: 'berserker', hp: 800, speed: 0.25, damage: 3.0, color: '#ea580c', radius: 38, score: 120 },
             { type: 'shooter', hp: 150, speed: 0.18, damage: 0.3, color: '#38bdf8', radius: 30, score: 40 },
-            { type: 'reader', hp: 300, speed: 0.22, damage: 0.5, color: '#fcd34d', radius: 30, score: 30 }
+            { type: 'reader', hp: 300, speed: 0.22, damage: 0.5, color: '#fcd34d', radius: 30, score: 30 },
+            { type: 'balloon', hp: 120, speed: 0.28, damage: 0.2, color: '#fb7185', radius: 25, score: 35 }
         ];
 
         // --- Custom Bot Canvas Drawing Functions ---
@@ -1453,6 +1459,26 @@
             mouse.clearCoords = true; // Clears the ghost cursor once you lift your finger
         }, { passive: false });
 
+        // Desktop Key Events
+        let keyBuffer = "";
+        window.addEventListener('keydown', (e) => {
+             if (e.key === 'Escape') {
+                 selectedCardType = null;
+                 manualTargetUnit = null;
+                 usingUltra = false;
+             }
+             
+             if (e.key.length === 1) {
+                keyBuffer += e.key.toLowerCase();
+                if (keyBuffer.endsWith("41superbear")) {
+                    ultraElectricity = 5;
+                    SoundEngine.energy();
+                    keyBuffer = "";
+                }
+                if (keyBuffer.length > 30) keyBuffer = keyBuffer.slice(-30);
+             }
+        });
+
         // UI Buttons
         speedBtn.addEventListener('click', () => {
             gameSpeed = gameSpeed < 4 ? gameSpeed + 1 : 1;
@@ -1664,9 +1690,12 @@
                 this.squashState = 'idle'; // idle, jumping
                 this.jumpTimer = 0;
                 this.startX = 0;
+                this.overdrive = false;
+                this.overdriveTimer = 0;
                 this.startY = 0;
                 this.targetX = 0;
                 this.targetY = 0;
+                this.isShield = card.id === 2 || card.id === 11;
                 
                 this.isChomp = card.id === 15;
                 this.chompState = 'idle'; // idle, digesting
@@ -1713,6 +1742,7 @@
                     let dist = Math.sqrt(Math.pow(cx - ax, 2) + Math.pow(cy - ay, 2));
                     
                     if (dist <= radiusMultiplier * CELL_SIZE) {
+                        if (attackers[i].hasBalloon) continue; // Balloon is in the air, ground explosions miss
                         attackers[i].health -= 2000; 
                     }
                 }
@@ -1939,6 +1969,36 @@
                     } else if (BotGraphics[this.card.id]) {
                         BotGraphics[this.card.id](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
                     }
+
+                    if (this.overdrive) {
+                        let opacity = 1;
+                        if (this.overdriveTimer < 180) { // Flicker/Fade in last 3 seconds
+                            opacity = 0.3 + Math.abs(Math.sin(frame * 0.2)) * 0.7;
+                        }
+                        ctx.strokeStyle = `rgba(168, 85, 247, ${opacity})`;
+                        ctx.lineWidth = 4;
+                        ctx.shadowColor = "#a855f7";
+                        ctx.shadowBlur = 15 * opacity;
+                        ctx.beginPath();
+                        ctx.roundRect(-this.width/2 - 2, -this.height/2 - 2, this.width + 4, this.height + 4, 12);
+                        ctx.stroke();
+
+                        // Armor plates for Shield Bots
+                        if (this.isShield) {
+                            ctx.save();
+                            ctx.strokeStyle = "#94a3b8"; 
+                            ctx.lineWidth = 3;
+                            ctx.fillStyle = "#475569";
+                            ctx.beginPath();
+                            ctx.roundRect(-25, -this.height/2 - 10, 50, 8, 2);
+                            ctx.roundRect(-25, this.height/2 + 2, 50, 8, 2);
+                            ctx.fill();
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+
+                        ctx.restore();
+                    }
                     
                     // Manual Targeting Highlight
                     if (manualTargetUnit === this) {
@@ -1963,7 +2023,17 @@
             }
 
             update() {
-                this.timer++;
+                let prevT = this.timer;
+                this.timer += this.overdrive ? 2 : 1;
+                
+                if (this.overdrive) {
+                    this.overdriveTimer--;
+                    if (this.overdriveTimer <= 0) {
+                        this.overdrive = false;
+                        this.maxHealth = this.card.hp;
+                        if (this.health > this.maxHealth) this.health = this.maxHealth;
+                    }
+                }
 
                 if (this.isChomp) {
                     if (this.chompState === 'idle') {
@@ -2046,8 +2116,9 @@
                             }
                         }
                         
-                        // If closest alien is within 1.5 grid spaces, launch!
-                        if (closestAlien && minDist < CELL_SIZE * 1.5) { 
+                        // If closest alien is within 1.5 grid spaces (or anywhere if overdriven), launch!
+                        let range = this.overdrive ? Infinity : (CELL_SIZE * 1.5);
+                        if (closestAlien && minDist < range) { 
                             this.squashState = 'jumping';
                             this.jumpTimer = 0;
                             this.startX = this.x;
@@ -2058,20 +2129,29 @@
                         }
                     } else if (this.squashState === 'jumping') {
                         this.jumpTimer++;
-                        let progress = this.jumpTimer / 25; // 25 frame jump sequence
-                        
+                        let jumpDur = this.overdrive ? 15 : 25;
+                        let progress = this.jumpTimer / jumpDur;
+                        // If overdriven, maintain active homing on the target
+                        if (this.overdrive) {
+                            let target = attackers.find(a => Math.hypot(a.x - this.targetX, a.y - this.targetY) < CELL_SIZE * 2);
+                            if (target) {
+                                this.targetX = target.x;
+                                this.targetY = target.y;
+                            }
+                        }
+
                         // Fly towards the target's grid coordinates
                         this.x = this.startX + (this.targetX - this.startX) * progress;
                         this.y = this.startY + (this.targetY - this.startY) * progress;
                         
-                        if (this.jumpTimer >= 25) {
-                            this.explode(1.0); // 1.0 cell radius slam
+                        if (this.jumpTimer >= jumpDur) {
+                            this.explode(this.overdrive ? 2.5 : 1.0); // Massive shockwave if overdriven
                             this.health = 0; // Destroy self on impact
                         }
                     }
                 }
 
-                if (this.isGenerator && this.timer % 400 === 0) {
+                if (this.isGenerator && Math.floor(prevT / 400) < Math.floor(this.timer / 400)) {
                     // Spawn the energy battery in the bottom-right corner of the bot
                     let spawnX = this.x + CELL_SIZE - 15;
                     let spawnY = this.y + CELL_SIZE - 15;
@@ -2092,7 +2172,7 @@
                     }
                 }
 
-                if (this.isShooter && this.timer % this.card.fireRate === 0) {
+                if (this.isShooter && Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
                     let alienInLane = false;
                     let alienAbove = false;
                     let alienBelow = false;
@@ -2111,17 +2191,19 @@
                     let isLaser = this.card.id === 16;
                     let isGrenade = this.card.id === 19;
 
+                    let projColor = isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8");
+
                     if (this.isTripleShooter) {
                         if (alienInLane || alienAbove || alienBelow) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
-                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
-                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
@@ -2136,13 +2218,13 @@
                             ];
                             let pos = positions[this.multiCount];
                             for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, "#38bdf8", 0, isPlasma, isFreeze, isGrenade, false, false));
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
                             shotFired = true;
                         }
                     }
@@ -2154,7 +2236,7 @@
                     }
                 }
 
-                if (this.isHomingShooter && this.timer % this.card.fireRate === 0) {
+                if (this.isHomingShooter && Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
                     if (attackers.length > 0) {
                         projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 6, 12, "#f43f5e", 0, false, false, false, true, false));
                         SoundEngine.missile();
@@ -2213,6 +2295,7 @@
                 if (level >= 11) availableTypes.push(9); // berserker
                 if (level >= 5) availableTypes.push(10); // shooter
                 if (level >= 7) availableTypes.push(11); // reader
+                if (level >= 13) availableTypes.push(12); // balloon
 
                 let typeIdx = 0;
                 let roll = Math.random();
@@ -2220,8 +2303,9 @@
                 if (availableTypes.includes(8) && roll > 0.95) typeIdx = 8;
                 else if (availableTypes.includes(9) && roll > 0.90) typeIdx = 9;
                 else if (availableTypes.includes(10) && roll > 0.76) typeIdx = 10;
-                else if (availableTypes.includes(11) && roll > 0.62) typeIdx = 11;
-                else if (availableTypes.includes(3) && roll > 0.52) typeIdx = 3;
+                else if (availableTypes.includes(11) && roll > 0.65) typeIdx = 11;
+                else if (availableTypes.includes(12) && roll > 0.55) typeIdx = 12;
+                else if (availableTypes.includes(3) && roll > 0.48) typeIdx = 3;
                 else if (availableTypes.includes(5) && roll > 0.42) typeIdx = 5;
                 else if (availableTypes.includes(6) && roll > 0.32) typeIdx = 6;
                 else if (availableTypes.includes(7) && roll > 0.22) typeIdx = 7;
@@ -2240,6 +2324,8 @@
                 this.color = config.color;
                 this.radius = config.radius;
                 this.scoreValue = config.score;
+                this.hasBalloon = this.type === 'balloon';
+                this.balloonPopTimer = 0;
                 this.width = CELL_SIZE * 0.8;
                 this.height = CELL_SIZE * 0.8;
                 
@@ -2607,6 +2693,42 @@
                             ctx.fillRect(cx - 26, cy + 4, 18, 24);
                         }
                     }
+                } else if (this.type === 'balloon') {
+                    // Body hanging below
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, this.radius, this.radius * 0.8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    if (this.hasBalloon) {
+                        // Drawing the balloon above
+                        ctx.save();
+                        ctx.translate(0, -50 + Math.sin(frame/15)*5);
+                        
+                        // String
+                        ctx.strokeStyle = "#e2e8f0";
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy + 30);
+                        ctx.lineTo(cx, cy + 70); // Attaches to top of alien
+                        ctx.stroke();
+                        
+                        // Balloon
+                        ctx.fillStyle = "#fb7185";
+                        ctx.shadowColor = "#fb7185";
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, 25, 32, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Highlight
+                        ctx.fillStyle = "rgba(255,255,255,0.4)";
+                        ctx.beginPath();
+                        ctx.ellipse(cx - 8, cy - 10, 6, 12, Math.PI/4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.restore();
+                    }
                 }
                 ctx.shadowBlur = 0;
 
@@ -2799,6 +2921,18 @@
                     ctx.beginPath();
                     ctx.roundRect(-20, -1, 40, 2, 1);
                     ctx.fill();
+                } else if (this.isPlasma) {
+                    ctx.fillStyle = "#a855f7";
+                    ctx.shadowColor = "#a855f7";
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Energy core
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius - 1.5, 0, Math.PI * 2);
+                    ctx.fill();
                 } else if (this.isHoming) {
                     if (this.angle !== undefined) ctx.rotate(this.angle);
                     ctx.beginPath();
@@ -2926,20 +3060,22 @@
         }
 
         class Energy {
-            constructor(x, y, fromSky) {
+            constructor(x, y, fromSky, type = 'normal') {
                 this.x = x;
                 this.targetY = y;
                 this.y = fromSky ? TOP_BAR_HEIGHT - 50 : y;
-                this.amount = 25;
-                this.radius = 15;
+                this.type = type;
+                this.amount = type === 'ultra' ? 1 : 25;
+                this.radius = type === 'ultra' ? 18 : 15;
                 this.speed = 2;
                 this.life = 600; 
             }
 
             draw() {
-                ctx.shadowColor = "#facc15";
+                let color = this.type === 'ultra' ? "#a855f7" : "#facc15";
+                ctx.shadowColor = color;
                 ctx.shadowBlur = 15;
-                ctx.fillStyle = "#facc15";
+                ctx.fillStyle = color;
                 
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -2949,6 +3085,13 @@
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius / 2, 0, Math.PI * 2);
                 ctx.fill();
+
+                if (this.type === 'ultra') {
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "bold 14px Orbitron";
+                    ctx.textAlign = "center";
+                    ctx.fillText("⚡", this.x, this.y + 5);
+                }
 
                 ctx.shadowBlur = 0;
             }
@@ -3239,6 +3382,21 @@
             ctx.textBaseline = "middle";
             ctx.fillText(`⚡ ${energy}`, 20, 80);
 
+            // Update HTML Ultra Counter
+            if (ultraCounter) {
+                ultraCounter.innerText = `⚡ ${ultraElectricity}`;
+                ultraCounter.style.opacity = ultraElectricity > 0 ? "1" : "0.5";
+                if (usingUltra) {
+                    ultraCounter.style.background = "#a855f7";
+                    ultraCounter.style.boxShadow = "0 0 15px #a855f7";
+                    ultraCounter.style.borderColor = "#fff";
+                } else {
+                    ultraCounter.style.background = "rgba(168, 85, 247, 0.4)";
+                    ultraCounter.style.boxShadow = "none";
+                    ultraCounter.style.borderColor = "#a855f7";
+                }
+            }
+
             ctx.fillStyle = "#fff";
             ctx.font = "20px Orbitron";
             ctx.textAlign = "right";
@@ -3304,6 +3462,21 @@
             let cardStartX = 140;
             let cardWidth = 75;
             let cardHeight = 85;
+
+            // Display Minigame Title
+            if (level >= 25 && level <= 30) {
+                let minigameName = "";
+                if (level <= 26) minigameName = "Classic Conveyor";
+                else if (level <= 28) minigameName = "Heavy Explosives";
+                else minigameName = "Laser Storm";
+                
+                ctx.save();
+                ctx.fillStyle = "rgba(56, 189, 248, 0.4)";
+                ctx.font = "italic bold 15px Orbitron";
+                ctx.textAlign = "right";
+                ctx.fillText(minigameName, CANVAS_WIDTH - 20, TOP_BAR_HEIGHT / 2 + 5);
+                ctx.restore();
+            }
             let cardGap = 8;
 
             for (let i = 0; i < availableCards.length; i++) {
@@ -3389,18 +3562,24 @@
                     ctx.restore();
                 }
 
-                ctx.fillStyle = (canAfford && isReady) ? "#facc15" : "#ef4444";
+                ctx.fillStyle = (canAfford || (level >= 25 && level <= 30)) ? "#facc15" : "#ef4444";
                 ctx.font = "bold 13px Orbitron";
-                ctx.fillText(card.cost > 0 ? (card.cost + " ⚡") : "FREE", x + cardWidth/2, y + 75);
+                let costText = (level >= 25 && level <= 30) ? "FREE" : (card.cost > 0 ? (card.cost + " ⚡") : "FREE");
+                ctx.fillText(costText, x + cardWidth/2, y + 75);
 
                 if (mouse.clicked && mouse.x > x && mouse.x < x + cardWidth && mouse.y > y && mouse.y < y + cardHeight) {
                     if (selectedCardType === card.id) {
                         selectedCardType = null; 
-                    } else if (canAfford && isReady) {
+                    } else if ((canAfford || (level >= 25 && level <= 30)) && isReady) {
                         selectedCardType = card.id;
                     }
                     mouse.clicked = false; 
                 }
+            }
+            // If clicking top bar but NOT on a card, deselect
+            if (mouse.clicked && mouse.y < TOP_BAR_HEIGHT) {
+                selectedCardType = null;
+                mouse.clicked = false;
             }
         }
 
@@ -3428,7 +3607,7 @@
             let inGrid = mouse.y > startY && mouse.y < startY + (activeRows * CELL_SIZE) && mouse.x > GRID_START_X && mouse.x < GRID_START_X + (COLS * CELL_SIZE);
 
             // --- Manual Targeting Management ---
-            if (mouse.clicked && selectedCardType === null) {
+            if (mouse.clicked && selectedCardType === null && !usingUltra) {
                 if (manualTargetUnit) {
                     // Fire Manual Bomb!
                     let sx = manualTargetUnit.x + manualTargetUnit.width/2;
@@ -3441,36 +3620,100 @@
                 } else {
                     // Try selecting a ready manual unit
                     let clickedManual = defenders.find(d => d.isUltraGrenade && d.currentManualCooldown <= 0 && 
-                        mouse.x > d.x && mouse.x < d.x + d.width && mouse.y > d.y && mouse.y < d.y + d.height);
+                        mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                     if (clickedManual) {
                         manualTargetUnit = clickedManual;
                         mouse.clicked = false;
                         SoundEngine.drill(); // Click sound
                     }
                 }
+            } else if (mouse.clicked && usingUltra && inGrid) {
+                let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
+                if (targetDef && !targetDef.overdrive) {
+                    targetDef.overdrive = true;
+                    targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
+                    
+                    let hpMult = targetDef.isShield ? 2.5 : 1.5;
+                    targetDef.maxHealth *= hpMult;
+                    targetDef.health = targetDef.maxHealth;
+                    
+                    ultraElectricity--;
+                    if (ultraElectricity <= 0) usingUltra = false;
+                    SoundEngine.energy();
+                    let text = targetDef.isShield ? "ARMORED!" : "OVERDRIVE!";
+                    floatingTexts.push(new FloatingText(targetDef.x + targetDef.width/2, targetDef.y, text, targetDef.isShield ? "148, 163, 184" : "168, 85, 247"));
+                    mouse.clicked = false;
+                }
+            }
+            handleCardPlacement();
+            window.oncontextmenu = function(e) { e.preventDefault(); selectedCardType = null; usingUltra = false; };
+        }
+
+        function completePlacement(card) {
+            if (!(level >= 25 && level <= 30)) {
+                energy -= card.cost;
+                card.currentCooldown = card.cooldown;
+            } else {
+                let idx = availableCards.indexOf(card);
+                if (idx !== -1) availableCards.splice(idx, 1);
+            }
+            selectedCardType = null;
+            SoundEngine.place();
+        }
+
+        function manageConveyor() {
+            if (!(level >= 25 && level <= 30)) return;
+            
+            let spawnRate = 270; // Default 4.5 seconds
+            let pool = [0, 1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23];
+            
+            if (level === 25 || level === 26) {
+                // Classic Mix
+                pool = [0, 1, 2, 4, 5, 7, 12, 15, 20];
+            } else if (level === 27 || level === 28) {
+                // Heavy Explosives
+                pool = [4, 7, 8, 12, 17, 19, 20, 22]; 
+                spawnRate = 330; 
+            } else if (level === 29 || level === 30) {
+                // Laser Storm
+                pool = [3, 9, 10, 14, 16, 18, 23];
+                spawnRate = 200; 
             }
 
+            if (frame % spawnRate === 0 && availableCards.length < 9) {
+                let rid = pool[Math.floor(Math.random() * pool.length)];
+                let template = cardTypes.find(c => c.id === rid);
+                if (template) {
+                   availableCards.push({...template, currentCooldown: 0});
+                }
+                SoundEngine.energy(); 
+            }
+        }
+
+        function handleCardPlacement() {
             if ((mouse.clicked || mouse.dropped) && selectedCardType !== null) {
+                let startY = getGridStartY();
+                let gridX = mouse.x - (mouse.x - GRID_START_X) % CELL_SIZE;
+                let gridY = mouse.y - (mouse.y - startY) % CELL_SIZE;
+                let defenderIndex = -1;
+                for (let i = 0; i < defenders.length; i++) {
+                    if (defenders[i].x === gridX && defenders[i].y === gridY) {
+                        defenderIndex = i;
+                        break;
+                    }
+                }
+
+                let card = availableCards.find(c => c && c.id === selectedCardType);
+                if (!card) {
+                    selectedCardType = null;
+                    mouse.clicked = false;
+                    mouse.dropped = false;
+                    return;
+                }
+
+                let inGrid = mouse.x >= GRID_START_X && mouse.x < CANVAS_WIDTH && mouse.y >= startY && mouse.y < startY + activeRows * CELL_SIZE;
+
                 if (inGrid) {
-                    let gridX = mouse.x - (mouse.x - GRID_START_X) % CELL_SIZE;
-                    let gridY = mouse.y - (mouse.y - startY) % CELL_SIZE;
-
-                    let defenderIndex = -1;
-                    for (let i = 0; i < defenders.length; i++) {
-                        if (defenders[i].x === gridX && defenders[i].y === gridY) {
-                            defenderIndex = i;
-                            break;
-                        }
-                    }
-
-                    let card = availableCards.find(c => c && c.id === selectedCardType);
-                    if (!card) {
-                        selectedCardType = null;
-                        mouse.clicked = false;
-                        mouse.dropped = false;
-                        return;
-                    }
-
                     if (selectedCardType === 6) { // Dig Tool interaction
                         if (defenderIndex !== -1) {
                             defenders.splice(defenderIndex, 1);
@@ -3478,98 +3721,97 @@
                             selectedCardType = null; 
                             SoundEngine.drill(); 
                         }
-                        mouse.clicked = false; 
-                        mouse.dropped = false;
                     } else if (selectedCardType === 8) { // Mega Spike Upgrade interaction
-                        if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 7) {
-                            if (energy >= card.cost && card.currentCooldown <= 0) {
-                                defenders[defenderIndex] = new Defender(gridX, gridY, card);
-                                energy -= card.cost;
-                                card.currentCooldown = card.cooldown; 
-                                selectedCardType = null; 
-                                SoundEngine.place(); 
-                            }
-                        }
-                        mouse.clicked = false; 
-                        mouse.dropped = false;
-                    } else if (selectedCardType === 11) { // Mega Shield Upgrade interaction
-                        if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 2) { // Must be placed on normal Shield
-                            if (energy >= card.cost && card.currentCooldown <= 0) {
-                                defenders[defenderIndex] = new Defender(gridX, gridY, card);
-                                energy -= card.cost;
-                                card.currentCooldown = card.cooldown; 
-                                selectedCardType = null; 
-                                SoundEngine.place(); 
-                            }
-                        }
-                        mouse.clicked = false; 
-                        mouse.dropped = false;
-                    } else if (selectedCardType === 22) { // Ultra Grenade fusion
-                        let def1 = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
-                        let def2 = defenders.find(d => d.x === gridX + CELL_SIZE && d.y === gridY && d.card.id === 19);
-                        if (def1 && def2) {
-                            if (energy >= card.cost && card.currentCooldown <= 0) {
-                                defenders.splice(defenders.indexOf(def1), 1);
-                                defenders.splice(defenders.indexOf(def2), 1);
+                        if ((level >= 25 && level <= 30) || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 7)) {
+                            if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
+                                if (defenderIndex !== -1) defenders.splice(defenderIndex, 1);
                                 defenders.push(new Defender(gridX, gridY, card));
-                                energy -= card.cost;
-                                card.currentCooldown = card.cooldown;
+                                completePlacement(card);
+                            } else {
                                 selectedCardType = null;
-                                SoundEngine.place();
+                            }
+                        } else {
+                            selectedCardType = null;
+                        }
+                    } else if (selectedCardType === 11) { // Mega Shield Upgrade interaction
+                        if ((level >= 25 && level <= 30) || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 2)) { 
+                            if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
+                                if (defenderIndex !== -1) defenders.splice(defenderIndex, 1);
+                                defenders.push(new Defender(gridX, gridY, card));
+                                completePlacement(card);
+                            } else {
+                                selectedCardType = null;
+                            }
+                        } else {
+                            selectedCardType = null;
+                        }
+                    } else if (selectedCardType === 22) { // Ultra Grenade interaction
+                        if ((level >= 25 && level <= 30)) {
+                            if (card.currentCooldown <= 0 && defenderIndex === -1) {
+                                defenders.push(new Defender(gridX, gridY, card));
+                                completePlacement(card);
+                            } else {
+                                selectedCardType = null;
+                            }
+                        } else {
+                            let clickedBot = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
+                            if (clickedBot) {
+                                let neighborRight = defenders.find(d => d.x === gridX + CELL_SIZE && d.y === gridY && d.card.id === 19);
+                                let neighborLeft = defenders.find(d => d.x === gridX - CELL_SIZE && d.y === gridY && d.card.id === 19);
+                                
+                                let def1 = null, def2 = null;
+                                if (neighborRight) {
+                                    def1 = clickedBot;
+                                    def2 = neighborRight;
+                                } else if (neighborLeft) {
+                                    def1 = neighborLeft;
+                                    def2 = clickedBot;
+                                }
+                                
+                                if (def1 && def2) {
+                                    if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
+                                        gridX = def1.x; // Place Ultra Grenade at the leftmost bot's position
+                                        defenders = defenders.filter(d => d !== def1 && d !== def2);
+                                        defenders.push(new Defender(gridX, gridY, card));
+                                        completePlacement(card);
+                                    }
+                                }
                             }
                         }
-                        mouse.clicked = false;
-                        mouse.dropped = false;
                     } else if (selectedCardType === 13) { // Multi Bot logic
                         if (defenderIndex !== -1 && defenders[defenderIndex].card.id === 13) {
-                            // Upgrade existing Multi Bot
                             if (defenders[defenderIndex].multiCount < 5) {
-                                if (energy >= card.cost && card.currentCooldown <= 0) {
+                                if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
                                     defenders[defenderIndex].multiCount++;
-                                    defenders[defenderIndex].maxHealth += 30; // Gives it slightly more health each level
+                                    defenders[defenderIndex].maxHealth += 30;
                                     defenders[defenderIndex].health += 30;
-                                    energy -= card.cost;
-                                    card.currentCooldown = card.cooldown; 
-                                    selectedCardType = null; 
-                                    SoundEngine.place(); 
+                                    completePlacement(card);
                                 }
                             }
                         } else if (defenderIndex === -1) {
-                            // Place initial Multi Bot
-                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                            if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
                                 defenders.push(new Defender(gridX, gridY, card));
-                                energy -= card.cost;
-                                card.currentCooldown = card.cooldown; 
-                                selectedCardType = null; 
-                                SoundEngine.place(); 
+                                completePlacement(card);
                             }
                         }
-                        mouse.clicked = false; 
-                        mouse.dropped = false;
                     } else { // Normal Bot Placement
                         if (defenderIndex === -1) {
-                            if (energy >= card.cost && card.currentCooldown <= 0) {
+                            if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
                                 let placementCard = card.isImitater ? cardTypes.find(c => c.id === card.targetId) : card;
                                 defenders.push(new Defender(gridX, gridY, placementCard));
-                                energy -= card.cost;
-                                card.currentCooldown = card.cooldown; 
-                                selectedCardType = null; 
-                                SoundEngine.place(); 
+                                completePlacement(card);
+                            } else {
+                                selectedCardType = null;
                             }
+                        } else {
+                            selectedCardType = null;
                         }
-                        mouse.clicked = false; 
-                        mouse.dropped = false;
                     }
                 } else if (mouse.y > TOP_BAR_HEIGHT) {
                     selectedCardType = null;
-                    mouse.clicked = false;
-                    mouse.dropped = false;
                 }
-            }
-
-            window.oncontextmenu = function(e) {
-                e.preventDefault();
-                selectedCardType = null;
+                mouse.clicked = false; 
+                mouse.dropped = false;
             }
         }
 
@@ -3592,10 +3834,15 @@
                 }
 
                 if (attackers[i].health <= 0) {
+                    let ax = attackers[i].x;
+                    let ay = attackers[i].y;
                     score += attackers[i].scoreValue;
-                    floatingTexts.push(new FloatingText(attackers[i].x, attackers[i].y, `+${attackers[i].scoreValue}`, "255, 255, 255"));
+                    floatingTexts.push(new FloatingText(ax, ay, `+${attackers[i].scoreValue}`, "255, 255, 255"));
                     attackers.splice(i, 1);
                     SoundEngine.death();
+                    if (Math.random() < 0.03) {
+                        energyDrops.push(new Energy(ax + CELL_SIZE/2, ay + CELL_SIZE/2, false, 'ultra'));
+                    }
                     i--;
                 }
             }
@@ -3647,6 +3894,13 @@
                     explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
                     for (let a = 0; a < attackers.length; a++) {
                         if (Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
+                            if (attackers[a].hasBalloon) {
+                                if (projectiles[i].isFreeze) {
+                                    attackers[a].hasBalloon = false;
+                                    floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
+                                }
+                                continue;
+                            }
                             attackers[a].health -= projectiles[i].damage;
                             if (projectiles[i].isFire) attackers[a].burnTimer = 180;
                             if (projectiles[i].isFreeze) attackers[a].freezeTimer = 180;
@@ -3671,6 +3925,20 @@
                             projectiles[i].hitTargets.add(attackers[j]);
                         }
 
+                        if (attackers[j].hasBalloon) {
+                            if (projectiles[i].isFreeze) {
+                                attackers[j].hasBalloon = false;
+                                SoundEngine.energy(); // Temporary pop sound
+                                floatingTexts.push(new FloatingText(attackers[j].x, attackers[j].y - 40, "POP!", "251, 113, 133"));
+                            }
+                            // Ignore damage but consume standard projectile
+                            if (!projectiles[i].isLaser) {
+                                projHit = true;
+                            }
+                            if (projHit) break;
+                            continue;
+                        }
+
                         attackers[j].health -= projectiles[i].damage;
                         
                         if (projectiles[i].isFreeze) {
@@ -3686,6 +3954,13 @@
                             explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
                             for (let a = 0; a < attackers.length; a++) {
                                 if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
+                                    if (attackers[a].hasBalloon) {
+                                        if (projectiles[i].isFreeze) {
+                                            attackers[a].hasBalloon = false;
+                                            floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
+                                        }
+                                        continue;
+                                    }
                                     attackers[a].health -= projectiles[i].damage;
                                     if (projectiles[i].isFire) attackers[a].burnTimer = 180;
                                     if (projectiles[i].isFreeze) attackers[a].freezeTimer = 180;
@@ -3765,6 +4040,11 @@
                         } else if (defender.isSpike) {
                             // Aliens DO NOT stop to eat the spike. They walk over it.
                             if (defender.isSpikesExtended()) {
+                                if (attacker.hasBalloon) {
+                                    attacker.hasBalloon = false;
+                                    SoundEngine.energy(); 
+                                    floatingTexts.push(new FloatingText(attacker.x, attacker.y - 40, "POP!", "251, 113, 133"));
+                                }
                                 // Drastically lowered damage output since it's now a timing trap
                                 let dmgToAlien = defender.isMegaSpike ? 0.6 : 0.2;
                                 let dmgToSpike = defender.isMegaSpike ? 0.02 : 0.05;
@@ -3818,8 +4098,19 @@
                     let distance = Math.sqrt(dx * dx + dy * dy);
 
                     if (distance < energyDrops[i].radius * 3) {
-                        energy += energyDrops[i].amount;
-                        floatingTexts.push(new FloatingText(energyDrops[i].x, energyDrops[i].y, `+${energyDrops[i].amount} ⚡`, "250, 204, 21"));
+                        let drop = energyDrops[i];
+                        if (drop.type === 'ultra') {
+                            if (ultraElectricity < 5) {
+                                ultraElectricity++;
+                                floatingTexts.push(new FloatingText(drop.x, drop.y, "+1 ULTRA ⚡", "168, 85, 247"));
+                            } else {
+                                energy += 100; // Bonus energy if full on ultra
+                                floatingTexts.push(new FloatingText(drop.x, drop.y, "+100 ⚡ (FULL)", "168, 85, 247"));
+                            }
+                        } else {
+                            energy += drop.amount;
+                            floatingTexts.push(new FloatingText(drop.x, drop.y, `+${drop.amount} ⚡`, "250, 204, 21"));
+                        }
                         energyDrops.splice(i, 1);
                         SoundEngine.energy(); 
                         i--;
@@ -3938,6 +4229,7 @@
             if (level >= 11) unlockedAliens.push(alienConfigs[9]); 
             if (level >= 5) unlockedAliens.push(alienConfigs[10]); 
             if (level >= 7) unlockedAliens.push(alienConfigs[11]); 
+            if (level >= 13) unlockedAliens.push(alienConfigs[12]); 
             
             unlockedAliens.forEach(alien => {
                 let displayType = alien.type.charAt(0).toUpperCase() + alien.type.slice(1);
@@ -3992,6 +4284,9 @@
                 } else if (alien.type === 'reader') {
                     desc = "Docile until its book is destroyed. Then it gets FURIOUS.";
                     svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><circle cx="30" cy="30" r="25" fill="#020617" stroke="${alien.color}" stroke-width="4"/><rect x="5" y="35" width="15" height="18" rx="2" fill="#78350f"/><g>${faceSVG}</g></svg>`;
+                } else if (alien.type === 'balloon') {
+                    desc = "Aerial threat. Immune to most damage while floating. Pop its balloon with ice or spikes!";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><ellipse cx="30" cy="45" rx="15" ry="12" fill="#020617" stroke="${alien.color}" stroke-width="3"/><circle cx="30" cy="20" r="18" fill="#fb7185" stroke="#fff" stroke-width="2"/><line x1="30" y1="38" x2="30" y2="28" stroke="#fff" stroke-width="1"/><g transform="translate(4, 16) scale(0.85)">${faceSVG}</g></svg>`;
                 }
                 
                 html += `
@@ -4077,6 +4372,7 @@
                 manageCombat();
                 manageExplosions(); 
                 manageEnergyDrops();
+                manageConveyor();
                 drawTopBar();
                 manageFloatingTexts();
                 drawCursorPreview(); 
@@ -4104,6 +4400,7 @@
 
         function initLevel() {
             activeRows = level === 1 ? 1 : (level === 2 ? 3 : 5);
+            if (level >= 25 && level <= 30) energy = 0; // No energy needed for conveyor belt minigames
             currentFramesLimit = level === 1 ? 2820 : (level === 2 ? 3420 : 4620 + (level * 300));
             
             createGrid();
@@ -4189,6 +4486,16 @@
             if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
+
+            if (level >= 25 && level <= 30) {
+                // Minigame level: No loadout, just start!
+                currentLoadout = []; 
+                initLevel();
+                SoundEngine.startBGM(level);
+                gameRunning = true;
+                animate();
+                return;
+            }
 
             if (pickableBots.length <= maxSlots) {
                 // Automatically equip all bots and skip the loadout screen
@@ -4480,6 +4787,14 @@
             adminScreen.classList.remove('hidden');
         });
 
+        ultraCounter.addEventListener('click', () => {
+            if (ultraElectricity > 0) {
+                usingUltra = !usingUltra;
+                if (usingUltra) selectedCardType = null;
+                SoundEngine.drill(); // Click sound
+            }
+        });
+
         closeAdminBtn.addEventListener('click', () => {
             adminScreen.classList.add('hidden');
             if (document.getElementById('startScreen').classList.contains('hidden') &&
@@ -4521,6 +4836,19 @@
             document.getElementById('passcodeInput').focus();
         });
 
+        document.getElementById('cheatBtn').addEventListener('click', () => {
+            adminScreen.classList.add('hidden');
+            passcodeAction = 'ultra';
+            document.getElementById('passcodeTitle').innerText = 'System Cheat Code';
+            document.getElementById('passcodeDesc').innerText = 'Enter global passcode for maximum power.';
+            document.getElementById('passcodeScreen').classList.remove('hidden');
+            document.getElementById('passcodeInput').value = '';
+            document.getElementById('levelSkipInput').classList.add('hidden');
+            document.getElementById('scoreInjectInput').classList.add('hidden');
+            document.getElementById('passcodeError').innerText = '';
+            document.getElementById('passcodeInput').focus();
+        });
+
         document.getElementById('cancelPasscodeBtn').addEventListener('click', () => {
             document.getElementById('passcodeScreen').classList.add('hidden');
             document.getElementById('levelSkipInput').classList.add('hidden');
@@ -4555,6 +4883,16 @@
                     SoundEngine.energy(); 
                     gameRunning = true;
                     animate(); // Resume the game with points injected
+                } else {
+                    document.getElementById('passcodeError').innerText = 'Access Denied: Invalid Passcode';
+                }
+            } else if (passcodeAction === 'ultra') {
+                if (input === "41superbear") {
+                    ultraElectricity = 5;
+                    SoundEngine.energy();
+                    document.getElementById('passcodeScreen').classList.add('hidden');
+                    gameRunning = true;
+                    animate(); 
                 } else {
                     document.getElementById('passcodeError').innerText = 'Access Denied: Invalid Passcode';
                 }
