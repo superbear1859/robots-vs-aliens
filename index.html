@@ -2933,6 +2933,16 @@
                     ctx.beginPath();
                     ctx.arc(0, 0, this.radius - 1.5, 0, Math.PI * 2);
                     ctx.fill();
+                } else if (this.isGrenade) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#facc15";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.radius);
+                    ctx.quadraticCurveTo(4, -this.radius - 4, 2, -this.radius - 6);
+                    ctx.stroke();
                 } else if (this.isHoming) {
                     if (this.angle !== undefined) ctx.rotate(this.angle);
                     ctx.beginPath();
@@ -2956,16 +2966,6 @@
                     ctx.lineTo(-8, 0);
                     ctx.closePath();
                     ctx.fill();
-                } else if (this.isGrenade) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = "#facc15";
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -this.radius);
-                    ctx.quadraticCurveTo(4, -this.radius - 4, 2, -this.radius - 6);
-                    ctx.stroke();
                 } else {
                     ctx.beginPath();
                     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
@@ -3877,9 +3877,8 @@
                                 projectiles[i].color = "#f97316";
                                 projectiles[i].damage = Math.floor(projectiles[i].damage * 1.5);
                                 break;
-                            } else if (def.isFrostGate && !projectiles[i].isFreeze) {
+                            } else if (def.isFrostGate) {
                                 projectiles[i].isFreeze = true;
-                                projectiles[i].isFire = false; // Ice douses fire
                                 projectiles[i].color = "#93c5fd";
                                 break; 
                             }
