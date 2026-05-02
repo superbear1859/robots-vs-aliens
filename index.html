@@ -1742,7 +1742,13 @@
                     let dist = Math.sqrt(Math.pow(cx - ax, 2) + Math.pow(cy - ay, 2));
                     
                     if (dist <= radiusMultiplier * CELL_SIZE) {
-                        if (attackers[i].hasBalloon) continue; // Balloon is in the air, ground explosions miss
+                        if (attackers[i].hasBalloon) {
+                            if (level >= 25 && level <= 30) {
+                                attackers[i].hasBalloon = false;
+                                floatingTexts.push(new FloatingText(attackers[i].x, attackers[i].y - 40, "POP!", "251, 113, 133"));
+                            }
+                            continue; // Balloon is in the air, ground explosions miss otherwise
+                        }
                         attackers[i].health -= 2000; 
                     }
                 }
@@ -3746,36 +3752,38 @@
                             selectedCardType = null;
                         }
                     } else if (selectedCardType === 22) { // Ultra Grenade interaction
-                        if ((level >= 25 && level <= 30)) {
-                            if (card.currentCooldown <= 0 && defenderIndex === -1) {
+                        let merged = false;
+                        let clickedBot = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
+                        if (clickedBot) {
+                            let neighborRight = defenders.find(d => d.x === gridX + CELL_SIZE && d.y === gridY && d.card.id === 19);
+                            let neighborLeft = defenders.find(d => d.x === gridX - CELL_SIZE && d.y === gridY && d.card.id === 19);
+                            
+                            let def1 = null, def2 = null;
+                            if (neighborRight) {
+                                def1 = clickedBot;
+                                def2 = neighborRight;
+                            } else if (neighborLeft) {
+                                def1 = neighborLeft;
+                                def2 = clickedBot;
+                            }
+                            
+                            if (def1 && def2) {
+                                if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
+                                    gridX = def1.x; // Place Ultra Grenade at the leftmost bot's position
+                                    defenders = defenders.filter(d => d !== def1 && d !== def2);
+                                    defenders.push(new Defender(gridX, gridY, card));
+                                    completePlacement(card);
+                                    merged = true;
+                                }
+                            }
+                        }
+                        
+                        if (!merged) {
+                            if ((level >= 25 && level <= 30) && card.currentCooldown <= 0 && defenderIndex === -1) {
                                 defenders.push(new Defender(gridX, gridY, card));
                                 completePlacement(card);
                             } else {
                                 selectedCardType = null;
-                            }
-                        } else {
-                            let clickedBot = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
-                            if (clickedBot) {
-                                let neighborRight = defenders.find(d => d.x === gridX + CELL_SIZE && d.y === gridY && d.card.id === 19);
-                                let neighborLeft = defenders.find(d => d.x === gridX - CELL_SIZE && d.y === gridY && d.card.id === 19);
-                                
-                                let def1 = null, def2 = null;
-                                if (neighborRight) {
-                                    def1 = clickedBot;
-                                    def2 = neighborRight;
-                                } else if (neighborLeft) {
-                                    def1 = neighborLeft;
-                                    def2 = clickedBot;
-                                }
-                                
-                                if (def1 && def2) {
-                                    if ((energy >= card.cost || (level >= 25 && level <= 30)) && card.currentCooldown <= 0) {
-                                        gridX = def1.x; // Place Ultra Grenade at the leftmost bot's position
-                                        defenders = defenders.filter(d => d !== def1 && d !== def2);
-                                        defenders.push(new Defender(gridX, gridY, card));
-                                        completePlacement(card);
-                                    }
-                                }
                             }
                         }
                     } else if (selectedCardType === 13) { // Multi Bot logic
@@ -3810,8 +3818,11 @@
                 } else if (mouse.y > TOP_BAR_HEIGHT) {
                     selectedCardType = null;
                 }
-                mouse.clicked = false; 
-                mouse.dropped = false;
+                
+                if (mouse.y > TOP_BAR_HEIGHT) {
+                    mouse.clicked = false; 
+                    mouse.dropped = false;
+                }
             }
         }
 
@@ -3894,7 +3905,7 @@
                     for (let a = 0; a < attackers.length; a++) {
                         if (Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
                             if (attackers[a].hasBalloon) {
-                                if (projectiles[i].isFreeze) {
+                                if (projectiles[i].isFreeze || (level >= 25 && level <= 30)) {
                                     attackers[a].hasBalloon = false;
                                     floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
                                 }
@@ -3925,7 +3936,7 @@
                         }
 
                         if (attackers[j].hasBalloon) {
-                            if (projectiles[i].isFreeze) {
+                            if (projectiles[i].isFreeze || (level >= 25 && level <= 30)) {
                                 attackers[j].hasBalloon = false;
                                 SoundEngine.energy(); // Temporary pop sound
                                 floatingTexts.push(new FloatingText(attackers[j].x, attackers[j].y - 40, "POP!", "251, 113, 133"));
@@ -3954,7 +3965,7 @@
                             for (let a = 0; a < attackers.length; a++) {
                                 if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
                                     if (attackers[a].hasBalloon) {
-                                        if (projectiles[i].isFreeze) {
+                                        if (projectiles[i].isFreeze || (level >= 25 && level <= 30)) {
                                             attackers[a].hasBalloon = false;
                                             floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
                                         }
