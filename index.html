@@ -2178,7 +2178,19 @@
                     }
                 }
 
-                if (this.isShooter && Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
+                let shouldFire = false;
+                if (this.isShooter) {
+                    if (this.overdrive && this.card.id === 1) {
+                        // 0.1 seconds = 6 frames. At 2 timer ticks per frame, we check every 12 ticks.
+                        if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
+                            shouldFire = true; 
+                        }
+                    } else if (Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
+                        shouldFire = true;
+                    }
+                }
+
+                if (shouldFire) {
                     let alienInLane = false;
                     let alienAbove = false;
                     let alienBelow = false;
@@ -2230,7 +2242,15 @@
                         }
                     } else {
                         if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            if (this.overdrive && this.card.id === 1) {
+                                const xOffsets = [0, 15, -15, 15, -15];
+                                const yOffsets = [0, -15, -15, 15, 15];
+                                for (let b = 0; b < 5; b++) {
+                                    projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], this.y + CELL_SIZE / 2 + yOffsets[b], 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                }
+                            } else {
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            }
                             shotFired = true;
                         }
                     }
@@ -3637,11 +3657,26 @@
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
+                    if (targetDef.card.id === 1) {
+                        targetDef.overdriveTimer = 60; // 1 second burst
+                    } else if (targetDef.card.id === 2 || targetDef.card.id === 11) {
+                        targetDef.overdriveTimer = Infinity; // Permanent health buff
+                    } else {
+                        targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
+                    }
                     
-                    let hpMult = targetDef.isShield ? 2.5 : 1.5;
-                    targetDef.maxHealth *= hpMult;
-                    targetDef.health = targetDef.maxHealth;
+                    if (targetDef.card.id === 0) { // Battery Bot instant generation
+                        energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
+                        energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
+                        energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + 15, false)); // Top-Right
+                        
+                        targetDef.overdrive = false; // Immediately revoke the status
+                        targetDef.overdriveTimer = 0;
+                    } else {
+                        let hpMult = targetDef.isShield ? 2.5 : 1.5;
+                        targetDef.maxHealth *= hpMult;
+                        targetDef.health = targetDef.maxHealth;
+                    }
                     
                     ultraElectricity--;
                     if (ultraElectricity <= 0) usingUltra = false;
