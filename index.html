@@ -1724,6 +1724,7 @@
 
             isSpikesExtended() {
                 if (!this.isSpike) return false;
+                if (this.overdrive) return true;
                 // 180 frames = exactly 3 seconds at 60fps. Active for the first 60 frames (1 second).
                 let cycle = this.timer % 180;
                 return cycle > 0 && cycle < 60;
@@ -1771,6 +1772,13 @@
 
                 ctx.save();
 
+                let isBigDouble = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                if (isBigDouble) {
+                    ctx.translate(cx, cy);
+                    ctx.scale(1.5, 1.5);
+                    ctx.translate(-cx, -cy);
+                }
+
                 if (useEmojiGraphics) {
                     let cyOffset = 0;
                     if (this.isSpike) {
@@ -1782,8 +1790,16 @@
                         cyOffset = -15 * extension; // Jump up by 15 pixels
                     }
 
-                    ctx.fillStyle = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
-                    ctx.strokeStyle = this.card.color;
+                    let bgCol = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
+                    let borderCol = this.card.color;
+                    
+                    if (isBigDouble) {
+                        bgCol = "#991b1b";
+                        borderCol = "#ef4444";
+                    }
+
+                    ctx.fillStyle = bgCol;
+                    ctx.strokeStyle = borderCol;
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.roundRect(drawX, drawY + cyOffset, this.width, this.height, 10);
@@ -1794,7 +1810,13 @@
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
                     
-                    if (this.card.symbol === '🔫') {
+                    if (isBigDouble) {
+                        ctx.save();
+                        ctx.translate(cx, cy + cyOffset);
+                        ctx.scale(-1, 1);
+                        ctx.fillText('🔫', 0, 0); // Single gun
+                        ctx.restore();
+                    } else if (this.card.symbol === '🔫') {
                         ctx.save();
                         ctx.translate(cx, cy + cyOffset);
                         ctx.scale(-1, 1);
@@ -1874,8 +1896,17 @@
                 }
 
                 // If Freeze Bot, use a deep frosty blue background. If Chomp bot, use dark green.
-                ctx.fillStyle = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
-                ctx.strokeStyle = this.card.color;
+                let normBgCol = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
+                let normBorderCol = this.card.color;
+                
+                let isBigDoubleNorm = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                if (isBigDoubleNorm) {
+                    normBgCol = "#991b1b";
+                    normBorderCol = "#ef4444";
+                }
+
+                ctx.fillStyle = normBgCol;
+                ctx.strokeStyle = normBorderCol;
                 ctx.lineWidth = 3;
 
                 // Unique flat drawing for Spike Bots and Mega Spikes
@@ -1973,7 +2004,10 @@
                             ctx.fillText(dots, 0, -25);
                         }
                     } else if (BotGraphics[this.card.id]) {
-                        BotGraphics[this.card.id](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
+                        let renderId = this.card.id;
+                        let isBigDoubleNorm = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                        if (isBigDoubleNorm) renderId = 1; // Render as single Blaster Bot cannon
+                        BotGraphics[renderId](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
                     }
 
                     if (this.overdrive) {
@@ -2107,6 +2141,22 @@
                         }
                     }
                 }
+                if (this.isSpike && this.overdrive) {
+                    for (let i = 0; i < attackers.length; i++) {
+                        let alien = attackers[i];
+                        if (alien.y === this.y) {
+                            let centerX = this.x + CELL_SIZE / 2;
+                            let alienCenterX = alien.x + CELL_SIZE / 2;
+                            
+                            if (alienCenterX > centerX + 5) {
+                                alien.x -= 2.5; // Vacuum left
+                            } else if (alienCenterX < centerX - 5) {
+                                alien.x += 2.5; // Vacuum right
+                            }
+                        }
+                    }
+                }
+
 
                 if (this.isSquash) {
                     if (this.squashState === 'idle') {
@@ -2180,11 +2230,15 @@
 
                 let shouldFire = false;
                 if (this.isShooter) {
-                    if (this.overdrive && this.card.id === 1) {
+                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || (this.card.id === 9 && this.overdriveTimer > 61))) {
                         // 0.1 seconds = 6 frames. At 2 timer ticks per frame, we check every 12 ticks.
                         if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
                             shouldFire = true; 
                         }
+                    } else if (this.overdrive && this.card.id === 9 && this.overdriveTimer === 1) {
+                        shouldFire = true;
+                    } else if (this.overdrive && this.card.id === 9 && this.overdriveTimer > 1 && this.overdriveTimer <= 61) {
+                        shouldFire = false; // Charging up for massive shot
                     } else if (Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
                         shouldFire = true;
                     }
@@ -2212,16 +2266,47 @@
                     let projColor = isPlasma ? "#a855f7" : (isFreeze ? "#93c5fd" : "#38bdf8");
 
                     if (this.isTripleShooter) {
-                        if (alienInLane || alienAbove || alienBelow) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
-                            if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
-                            if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                        if (alienInLane || alienAbove || alienBelow || this.overdrive) {
+                            if (this.overdrive) {
+                                const xOffsets = [0, 15, -15, 15, -15];
+                                const yOffsets = [0, -15, -15, 15, 15];
+                                
+                                for (let b = 0; b < 5; b++) {
+                                    projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], this.y + CELL_SIZE / 2 + yOffsets[b], 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                }
+                                if (this.y - CELL_SIZE >= getGridStartY()) {
+                                    for (let b = 0; b < 5; b++) {
+                                        projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], this.y - CELL_SIZE + CELL_SIZE / 2 + yOffsets[b], 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                    }
+                                }
+                                if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) {
+                                    for (let b = 0; b < 5; b++) {
+                                        projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], this.y + CELL_SIZE + CELL_SIZE / 2 + yOffsets[b], 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                    }
+                                }
+                            } else {
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                if (this.y - CELL_SIZE >= getGridStartY()) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y - CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                if (this.y + CELL_SIZE < getGridStartY() + activeRows * CELL_SIZE) projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            }
                             shotFired = true;
                         }
                     } else if (this.isDoubleShooter) {
-                        if (alienInLane) {
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
-                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                        if (alienInLane || this.overdrive) {
+                            if (this.overdrive && this.overdriveTimer > 61) {
+                                const xOffsets = [0, 15, -15, 15, -15];
+                                const yOffsets = [0, -15, -15, 15, 15];
+                                for (let b = 0; b < 5; b++) {
+                                    projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], this.y + CELL_SIZE / 2 + yOffsets[b], 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                }
+                            } else if (this.overdrive && this.overdriveTimer === 1) {
+                                let bigProj = new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 30, 400, "#ef4444", 0, isPlasma, isFreeze, isGrenade, false, false);
+                                bigProj.y = this.y + CELL_SIZE / 2; // Center the massive bullet vertically!
+                                projectiles.push(bigProj);
+                            } else if (!this.overdrive) {
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 + 12, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                            }
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
@@ -2242,7 +2327,7 @@
                         }
                     } else {
                         if (alienInLane) {
-                            if (this.overdrive && this.card.id === 1) {
+                            if (this.overdrive && (this.card.id === 1 || this.card.id === 3)) {
                                 const xOffsets = [0, 15, -15, 15, -15];
                                 const yOffsets = [0, -15, -15, 15, 15];
                                 for (let b = 0; b < 5; b++) {
@@ -2363,6 +2448,7 @@
                 this.frameX = 0;
                 this.freezeTimer = 0; // Timer for freeze effect
                 this.burnTimer = 0; // Timer for burn effect
+                this.dropsUltra = Math.random() < 0.15;
             }
 
             draw() {
@@ -2381,8 +2467,12 @@
                 // If frozen, override color to be a frosty blue
                 let currentColor = (this.freezeTimer > 0) ? "#93c5fd" : (this.burnTimer > 0 ? "#f97316" : (isEnraged ? "#ef4444" : this.color));
 
+                if (this.dropsUltra) {
+                    currentColor = "#a855f7"; // Intense purple for Ultra droppers
+                }
+
                 ctx.shadowColor = currentColor;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = this.dropsUltra ? 30 : 15;
                 ctx.fillStyle = "#020617";
                 ctx.strokeStyle = currentColor;
                 ctx.lineWidth = 3;
@@ -3657,8 +3747,14 @@
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    if (targetDef.card.id === 1) {
+                    if (targetDef.card.id === 1 || targetDef.card.id === 10) {
                         targetDef.overdriveTimer = 60; // 1 second burst
+                    } else if (targetDef.card.id === 3) {
+                        targetDef.overdriveTimer = 120; // 2 seconds burst
+                    } else if (targetDef.card.id === 9) {
+                        targetDef.overdriveTimer = 121; // 1s X-burst, 1s charging, 1 frame big shot
+                    } else if (targetDef.card.id === 7 || targetDef.card.id === 8) {
+                        targetDef.overdriveTimer = 600; // 10 seconds magnetic pull
                     } else if (targetDef.card.id === 2 || targetDef.card.id === 11) {
                         targetDef.overdriveTimer = Infinity; // Permanent health buff
                     } else {
@@ -3676,6 +3772,34 @@
                         let hpMult = targetDef.isShield ? 2.5 : 1.5;
                         targetDef.maxHealth *= hpMult;
                         targetDef.health = targetDef.maxHealth;
+                        
+                        if (targetDef.card.id === 5) { // Mine Bot replication
+                            targetDef.armed = true;
+                            targetDef.timer = 900;
+                            let gridStartY = getGridStartY();
+                            let adjacentCoords = [
+                                {x: targetDef.x + CELL_SIZE, y: targetDef.y},
+                                {x: targetDef.x - CELL_SIZE, y: targetDef.y},
+                                {x: targetDef.x, y: targetDef.y + CELL_SIZE},
+                                {x: targetDef.x, y: targetDef.y - CELL_SIZE}
+                            ];
+                            
+                            adjacentCoords.forEach(coord => {
+                                if (coord.x >= GRID_START_X && coord.x < GRID_START_X + (COLS * CELL_SIZE) &&
+                                    coord.y >= gridStartY && coord.y < gridStartY + (activeRows * CELL_SIZE)) {
+                                    if (!defenders.some(d => d.x === coord.x && d.y === coord.y)) {
+                                        let newMine = new Defender(coord.x, coord.y, targetDef.card);
+                                        newMine.armed = true;
+                                        newMine.timer = 900;
+                                        newMine.overdrive = true;
+                                        newMine.overdriveTimer = 1200;
+                                        newMine.maxHealth *= 1.5;
+                                        newMine.health = newMine.maxHealth;
+                                        defenders.push(newMine);
+                                    }
+                                }
+                            });
+                        }
                     }
                     
                     ultraElectricity--;
@@ -3751,8 +3875,7 @@
                     mouse.dropped = false;
                     return;
                 }
-
-                let inGrid = mouse.x >= GRID_START_X && mouse.x < CANVAS_WIDTH && mouse.y >= startY && mouse.y < startY + activeRows * CELL_SIZE;
+                let inGrid = mouse.x >= GRID_START_X && mouse.x < GRID_START_X + (COLS * CELL_SIZE) && mouse.y >= startY && mouse.y < startY + activeRows * CELL_SIZE;
 
                 if (inGrid) {
                     if (selectedCardType === 6) { // Dig Tool interaction
@@ -3882,11 +4005,12 @@
                 if (attackers[i].health <= 0) {
                     let ax = attackers[i].x;
                     let ay = attackers[i].y;
+                    let dropsUltra = attackers[i].dropsUltra;
                     score += attackers[i].scoreValue;
                     floatingTexts.push(new FloatingText(ax, ay, `+${attackers[i].scoreValue}`, "255, 255, 255"));
                     attackers.splice(i, 1);
                     SoundEngine.death();
-                    if (Math.random() < 0.03) {
+                    if (dropsUltra) {
                         energyDrops.push(new Energy(ax + CELL_SIZE/2, ay + CELL_SIZE/2, false, 'ultra'));
                     }
                     i--;
@@ -4091,7 +4215,8 @@
                                     floatingTexts.push(new FloatingText(attacker.x, attacker.y - 40, "POP!", "251, 113, 133"));
                                 }
                                 // Drastically lowered damage output since it's now a timing trap
-                                let dmgToAlien = defender.isMegaSpike ? 0.6 : 0.2;
+                                let dmgMult = defender.overdrive ? 5 : 1;
+                                let dmgToAlien = (defender.isMegaSpike ? 0.6 : 0.2) * dmgMult;
                                 let dmgToSpike = defender.isMegaSpike ? 0.02 : 0.05;
                                 attacker.health -= dmgToAlien; 
                                 defender.health -= dmgToSpike; 
