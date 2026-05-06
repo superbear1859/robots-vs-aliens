@@ -1772,7 +1772,7 @@
 
                 ctx.save();
 
-                let isBigDouble = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                let isBigDouble = (this.card.id === 9 || this.card.id === 13) && this.overdrive && this.overdriveTimer <= 61;
                 if (isBigDouble) {
                     ctx.translate(cx, cy);
                     ctx.scale(1.5, 1.5);
@@ -1899,7 +1899,7 @@
                 let normBgCol = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
                 let normBorderCol = this.card.color;
                 
-                let isBigDoubleNorm = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                let isBigDoubleNorm = (this.card.id === 9 || this.card.id === 13) && this.overdrive && this.overdriveTimer <= 61;
                 if (isBigDoubleNorm) {
                     normBgCol = "#991b1b";
                     normBorderCol = "#ef4444";
@@ -2005,7 +2005,7 @@
                         }
                     } else if (BotGraphics[this.card.id]) {
                         let renderId = this.card.id;
-                        let isBigDoubleNorm = this.card.id === 9 && this.overdrive && this.overdriveTimer <= 61;
+                        let isBigDoubleNorm = (this.card.id === 9 || this.card.id === 13) && this.overdrive && this.overdriveTimer <= 61;
                         if (isBigDoubleNorm) renderId = 1; // Render as single Blaster Bot cannon
                         BotGraphics[renderId](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
                     }
@@ -2230,14 +2230,14 @@
 
                 let shouldFire = false;
                 if (this.isShooter) {
-                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || (this.card.id === 9 && this.overdriveTimer > 61))) {
+                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || this.card.id === 14 || (this.card.id === 9 && this.overdriveTimer > 61))) {
                         // 0.1 seconds = 6 frames. At 2 timer ticks per frame, we check every 12 ticks.
                         if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
                             shouldFire = true; 
                         }
-                    } else if (this.overdrive && this.card.id === 9 && this.overdriveTimer === 1) {
+                    } else if (this.overdrive && (this.card.id === 9 || this.card.id === 13) && this.overdriveTimer === 1) {
                         shouldFire = true;
-                    } else if (this.overdrive && this.card.id === 9 && this.overdriveTimer > 1 && this.overdriveTimer <= 61) {
+                    } else if (this.overdrive && (this.card.id === 9 || this.card.id === 13) && this.overdriveTimer > 1 && this.overdriveTimer <= 61) {
                         shouldFire = false; // Charging up for massive shot
                     } else if (Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
                         shouldFire = true;
@@ -2302,6 +2302,7 @@
                             } else if (this.overdrive && this.overdriveTimer === 1) {
                                 let bigProj = new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 30, 400, "#ef4444", 0, isPlasma, isFreeze, isGrenade, false, false);
                                 bigProj.y = this.y + CELL_SIZE / 2; // Center the massive bullet vertically!
+                                bigProj.isMassive = true;
                                 projectiles.push(bigProj);
                             } else if (!this.overdrive) {
                                 projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2 - 10, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
@@ -2310,24 +2311,31 @@
                             shotFired = true;
                         }
                     } else if (this.isMultiShooter) {
-                        if (alienInLane) {
-                            const positions = [
-                                [],
-                                [{x: 0, y: 0}],
-                                [{x: 0, y: -12}, {x: 0, y: 12}],
-                                [{x: 0, y: -16}, {x: 0, y: 0}, {x: 0, y: 16}],
-                                [{x: -12, y: -12}, {x: 12, y: -12}, {x: -12, y: 12}, {x: 12, y: 12}],
-                                [{x: -14, y: -14}, {x: 14, y: -14}, {x: 0, y: 0}, {x: -14, y: 14}, {x: 14, y: 14}]
-                            ];
-                            let pos = positions[this.multiCount];
-                            for (let k = 0; k < pos.length; k++) {
-                                projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                        if (alienInLane || this.overdrive) {
+                            if (this.overdrive && this.overdriveTimer === 1) {
+                                let bigProj = new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 30, 400, "#ef4444", 0, isPlasma, isFreeze, isGrenade, false, false);
+                                bigProj.y = this.y + CELL_SIZE / 2; // Center the massive bullet vertically!
+                                bigProj.isMassive = true;
+                                projectiles.push(bigProj);
+                            } else if (!this.overdrive) {
+                                const positions = [
+                                    [],
+                                    [{x: 0, y: 0}],
+                                    [{x: 0, y: -12}, {x: 0, y: 12}],
+                                    [{x: 0, y: -16}, {x: 0, y: 0}, {x: 0, y: 16}],
+                                    [{x: -12, y: -12}, {x: 12, y: -12}, {x: -12, y: 12}, {x: 12, y: 12}],
+                                    [{x: -14, y: -14}, {x: 14, y: -14}, {x: 0, y: 0}, {x: -14, y: 14}, {x: 14, y: 14}]
+                                ];
+                                let pos = positions[this.multiCount];
+                                for (let k = 0; k < pos.length; k++) {
+                                    projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
+                                }
                             }
                             shotFired = true;
                         }
                     } else {
                         if (alienInLane) {
-                            if (this.overdrive && (this.card.id === 1 || this.card.id === 3)) {
+                            if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 14)) {
                                 const xOffsets = [0, 15, -15, 15, -15];
                                 const yOffsets = [0, -15, -15, 15, 15];
                                 for (let b = 0; b < 5; b++) {
@@ -3747,12 +3755,14 @@
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    if (targetDef.card.id === 1 || targetDef.card.id === 10) {
+                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14) {
                         targetDef.overdriveTimer = 60; // 1 second burst
                     } else if (targetDef.card.id === 3) {
                         targetDef.overdriveTimer = 120; // 2 seconds burst
                     } else if (targetDef.card.id === 9) {
                         targetDef.overdriveTimer = 121; // 1s X-burst, 1s charging, 1 frame big shot
+                    } else if (targetDef.card.id === 13) {
+                        targetDef.overdriveTimer = 61; // 1s charging, 1 frame big shot
                     } else if (targetDef.card.id === 7 || targetDef.card.id === 8) {
                         targetDef.overdriveTimer = 600; // 10 seconds magnetic pull
                     } else if (targetDef.card.id === 2 || targetDef.card.id === 11) {
@@ -4089,7 +4099,7 @@
                         projectiles[i].y > attackers[j].y && 
                         projectiles[i].y < attackers[j].y + attackers[j].height) {
                         
-                        if (projectiles[i].isLaser) {
+                        if (projectiles[i].isLaser || projectiles[i].isMassive) {
                             if (projectiles[i].hitTargets.has(attackers[j])) continue;
                             projectiles[i].hitTargets.add(attackers[j]);
                         }
@@ -4138,7 +4148,13 @@
                             SoundEngine.explosion();
                         }
 
-                        if (!projectiles[i].isLaser) {
+                        if (projectiles[i].isMassive) {
+                            if (attackers[j].health <= 0) {
+                                projHit = false; // Killed the alien! Pierce through!
+                            } else {
+                                projHit = true; // Alien survived. Bullet stops.
+                            }
+                        } else if (!projectiles[i].isLaser) {
                             projHit = true;
                         }
                         SoundEngine.alienHit(); 
@@ -4525,32 +4541,60 @@
             }
         }
 
-        function animate() {
-            if (!gameRunning) return;
+        let lastFrameTime = 0;
+        let accumulatedTime = 0;
+        const MS_PER_FRAME = 1000 / 60;
 
-            for (let step = 0; step < gameSpeed; step++) {
-                if (!gameRunning) break; 
+        function animate(currentTime) {
+            if (!currentTime) currentTime = performance.now();
+            if (!gameRunning) {
+                lastFrameTime = 0;
+                return;
+            }
+
+            if (lastFrameTime === 0) lastFrameTime = currentTime;
+            let deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+
+            // Cap deltaTime to avoid massive catch-up if tab was inactive
+            if (deltaTime > 250) deltaTime = 250;
+
+            accumulatedTime += deltaTime;
+            
+            let framesToRun = Math.floor(accumulatedTime / MS_PER_FRAME);
+            
+            if (framesToRun > 0) {
+                accumulatedTime -= framesToRun * MS_PER_FRAME;
                 
-                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                // Hard cap logic ticks per frame to prevent "spiral of death" on extremely slow devices
+                if (framesToRun > 4) framesToRun = 4;
                 
-                drawGrid();
-                manageGuardBots();
-                manageDefenders();
-                manageAttackers();
-                manageProjectiles();
-                manageAlienProjectiles();
-                manageCombat();
-                manageExplosions(); 
-                manageEnergyDrops();
-                manageConveyor();
-                drawTopBar();
-                manageFloatingTexts();
-                drawCursorPreview(); 
-                updateLevelProgress();
+                let totalSteps = framesToRun * gameSpeed;
 
-                frame++;
+                for (let step = 0; step < totalSteps; step++) {
+                    if (!gameRunning) break; 
+                    
+                    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                    
+                    drawGrid();
+                    manageGuardBots();
+                    manageDefenders();
+                    manageAttackers();
+                    manageProjectiles();
+                    manageAlienProjectiles();
+                    manageCombat();
+                    manageExplosions(); 
+                    manageEnergyDrops();
+                    manageConveyor();
+                    drawTopBar();
+                    manageFloatingTexts();
+                    drawCursorPreview(); 
+                    updateLevelProgress();
 
-                if (gameOver) break;
+                    frame++;
+
+                    if (gameOver) break;
+                }
             }
 
             if (mouse.clicked) mouse.clicked = false;
