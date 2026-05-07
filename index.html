@@ -462,6 +462,7 @@
             <p id="loadoutSubtitle" style="margin-bottom: 10px;">Choose up to 6 bots for this sector.</p>
             <div id="selectedSlots" class="loadout-slots"></div>
             <p id="drillNote" style="font-size: 1vw; color: #94a3b8; margin-bottom: 15px; display: none;">(The Drill Tool is automatically equipped)</p>
+            <p id="balloonWarning" style="font-size: 1.2vw; color: #ef4444; font-weight: bold; margin-bottom: 15px; display: none;">⚠️ Warning: You have no bots to pop balloons! (Bring Freeze Bot, Frost Gate, or Spike Bots)</p>
             <div id="availablePool" class="loadout-pool"></div>
             <div class="button-group" style="margin-top: 20px; align-items: center;">
                 <button id="confirmLoadoutBtn" class="main-btn" style="margin-top: 0;">Initialize Defense</button>
@@ -1828,7 +1829,7 @@
                         ctx.fillText(symbol, cx, cy + cyOffset);
                     } else {
                     if (this.isPunchingBot && this.punchPhase === 'punching') {
-                        let punchOffset = Math.sin((this.punchTimer % 8) / 8 * Math.PI) * 80;
+                        let punchOffset = Math.sin((this.punchTimer % 30) / 30 * Math.PI) * 80;
                         ctx.save();
                         ctx.translate(cx + punchOffset, cy + cyOffset);
                         ctx.scale(-1, 1);
@@ -2082,7 +2083,7 @@
                         
                         for (let i = 0; i < attackers.length; i++) {
                             let alien = attackers[i];
-                            if (alien.y === this.y) {
+                            if (alien.y === this.y && !alien.hasBalloon) {
                                 let dist = alien.x - this.x; 
                                 // Allows eating aliens slightly behind it or up to 1.5 blocks in front
                                 if (dist >= -CELL_SIZE/2 && dist < minDist) {
@@ -2095,8 +2096,10 @@
                         // If closest alien is within 1.5 grid spaces, instantly eat it!
                         if (closestAlien && minDist <= CELL_SIZE * 1.5) { 
                             closestAlien.health = 0; // Triggers immediate death/score in the attacker loop
-                            this.chompState = 'digesting';
-                            this.digestTimer = 480; // 8 seconds of digestion at 60fps
+                            if (!this.overdrive) {
+                                this.chompState = 'digesting';
+                                this.digestTimer = 900; // 15 seconds of digestion at 60fps
+                            }
                             SoundEngine.death(); // Play a sound for eating
                             floatingTexts.push(new FloatingText(this.x + CELL_SIZE/2, this.y, "CHOMP!", "132, 204, 22"));
                         }
@@ -2115,29 +2118,26 @@
                         if (alienAhead) {
                             this.punchPhase = 'punching';
                             this.punchTimer = 0;
-                            this.punchCount = 0;
                         }
                     } else if (this.punchPhase === 'punching') {
                         this.punchTimer++;
-                        // One punch every 8 frames (quick)
-                        if (this.punchTimer % 8 === 0) {
-                            this.punchCount++;
+                        // One punch every 30 frames (0.5 seconds)
+                        if (this.punchTimer === 15) { // Hit at the peak of the punch
                             let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
                             if (alienAhead) {
-                                alienAhead.health -= 60; // Potent melee hits
+                                alienAhead.health -= 30; // Reduced damage
                                 SoundEngine.hit();
                                 floatingTexts.push(new FloatingText(this.x + CELL_SIZE, this.y + 20, "POW!", "244, 63, 94", 0.8));
                             }
                         }
-                        if (this.punchCount >= 5) {
-                            this.punchPhase = 'waiting';
-                            this.punchTimer = 0;
-                        }
-                    } else if (this.punchPhase === 'waiting') {
-                        this.punchTimer++;
-                        if (this.punchTimer >= 60) { // 1 second delay
-                            this.punchPhase = 'idle';
-                            this.punchTimer = 0;
+                        if (this.punchTimer >= 30) {
+                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                            if (alienAhead) {
+                                this.punchTimer = 0; // Continue punching
+                            } else {
+                                this.punchPhase = 'idle'; // Stop punching
+                                this.punchTimer = 0;
+                            }
                         }
                     }
                 }
@@ -2230,7 +2230,7 @@
 
                 let shouldFire = false;
                 if (this.isShooter) {
-                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || this.card.id === 14 || (this.card.id === 9 && this.overdriveTimer > 61))) {
+                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || this.card.id === 14 || this.card.id === 16 || (this.card.id === 9 && this.overdriveTimer > 61))) {
                         // 0.1 seconds = 6 frames. At 2 timer ticks per frame, we check every 12 ticks.
                         if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
                             shouldFire = true; 
@@ -2331,6 +2331,11 @@
                                     projectiles.push(new Projectile(this.x + CELL_SIZE + pos[k].x, this.y + CELL_SIZE / 2 + pos[k].y, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false));
                                 }
                             }
+                            shotFired = true;
+                        }
+                    } else if (isLaser) {
+                        if (alienInLane || this.overdrive) {
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 5, 20, projColor, 0, isPlasma, isFreeze, isGrenade, false, false, 0, 0, false, true));
                             shotFired = true;
                         }
                     } else {
@@ -3755,7 +3760,7 @@
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14) {
+                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14 || targetDef.card.id === 16) {
                         targetDef.overdriveTimer = 60; // 1 second burst
                     } else if (targetDef.card.id === 3) {
                         targetDef.overdriveTimer = 120; // 2 seconds burst
@@ -3767,6 +3772,9 @@
                         targetDef.overdriveTimer = 600; // 10 seconds magnetic pull
                     } else if (targetDef.card.id === 2 || targetDef.card.id === 11) {
                         targetDef.overdriveTimer = Infinity; // Permanent health buff
+                    } else if (targetDef.card.id === 15) {
+                        targetDef.overdriveTimer = 720; // 12 seconds
+                        targetDef.chompState = 'idle';
                     } else {
                         targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
                     }
@@ -4856,6 +4864,19 @@
                 }
                 poolContainer.appendChild(cardDiv);
             });
+
+            // Handle Balloon Warning
+            const balloonWarning = document.getElementById('balloonWarning');
+            let hasBalloons = level >= 13 && (level < 25 || level > 30);
+            let hasAntiBalloon = currentLoadout.some(id => [7, 8, 14, 23].includes(id));
+            if (currentLoadout.includes(21) && typeof imitaterChoice !== 'undefined' && imitaterChoice && [7, 8, 14, 23].includes(imitaterChoice.id)) {
+                hasAntiBalloon = true;
+            }
+            if (hasBalloons && !hasAntiBalloon && currentLoadout.length > 0) {
+                balloonWarning.style.display = 'block';
+            } else {
+                balloonWarning.style.display = 'none';
+            }
 
             // Handle button state
             let requiredAmount = Math.min(pickableBots.length, maxSlots);
