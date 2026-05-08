@@ -774,7 +774,7 @@
             { id: 16, name: "Laser Bot", cost: 150, color: "#ef4444", symbol: "☄️", desc: "Piercing beam", hp: 120, fireRate: 150, cooldown: 450, currentCooldown: 0 },
             { id: 17, name: "Flame Bot", cost: 125, color: "#f97316", symbol: "🔥", desc: "Ignites projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 18, name: "Missile Bot", cost: 225, color: "#cbd5e1", symbol: "🚀", desc: "Homing missiles", hp: 150, fireRate: 60, cooldown: 600, currentCooldown: 0 },
-            { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 240, cooldown: 450, currentCooldown: 0 },
+            { id: 19, name: "Grenade Bot", cost: 225, color: "#475569", symbol: "🧨", desc: "Mini Area Bomb", hp: 120, fireRate: 100, cooldown: 450, currentCooldown: 0 },
             { id: 20, name: "Punching Bot", cost: 125, color: "#f43f5e", symbol: "🥊", desc: "Rapid Multi-Punch", hp: 1000, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 21, name: "Imitater", cost: 0, color: "#6366f1", symbol: "🎭", desc: "Copies another bot", hp: 100, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 22, name: "Ultra Grenade", cost: 350, color: "#0f172a", symbol: "💣", desc: "Giant Bomb fusion", hp: 1000, fireRate: 360, cooldown: 900, currentCooldown: 0 },
@@ -1319,21 +1319,40 @@
                 ctx.lineTo((8 + extension)*s, 5*s);
                 ctx.stroke();
                 
-                // Power glove
-                ctx.fillStyle = "#f43f5e";
-                ctx.beginPath();
-                ctx.roundRect((extension)*s, -8*s, 16*s, 20*s, 5*s);
-                ctx.fill();
-                ctx.strokeStyle = "#fda4af";
-                ctx.lineWidth = 1.5*s;
-                ctx.stroke();
-
-                // Energy pulses on glove
-                if (info && info.phase === 'punching') {
-                    ctx.fillStyle = "#fff";
+                // Power glove swarm for overdrive
+                if (info && info.overdrive) {
+                    for (let p = 0; p < 12; p++) {
+                        let angle = (frame * 0.4 + p * Math.PI / 6);
+                        let dist = (35 + Math.sin(frame * 0.7 + p) * 25) * s;
+                        let px = Math.cos(angle) * dist;
+                        let py = Math.sin(angle) * dist;
+                        
+                        ctx.save();
+                        ctx.translate(px, py);
+                        ctx.rotate(angle);
+                        ctx.fillStyle = "rgba(244, 63, 94, 0.4)";
+                        ctx.beginPath();
+                        ctx.roundRect(0, -6*s, 14*s, 12*s, 4*s);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                } else {
+                    // Normal Power glove
+                    ctx.fillStyle = "#f43f5e";
                     ctx.beginPath();
-                    ctx.arc((8 + extension)*s, 0, 3*s, 0, Math.PI * 2);
+                    ctx.roundRect((extension)*s, -8*s, 16*s, 20*s, 5*s);
                     ctx.fill();
+                    ctx.strokeStyle = "#fda4af";
+                    ctx.lineWidth = 1.5*s;
+                    ctx.stroke();
+
+                    // Energy pulses on glove
+                    if (info && info.phase === 'punching') {
+                        ctx.fillStyle = "#fff";
+                        ctx.beginPath();
+                        ctx.arc((8 + extension)*s, 0, 3*s, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             },
             22: (ctx, s) => { // Ultra Grenade - Massive sphere
@@ -1828,13 +1847,33 @@
                         let symbol = multiSymbols[Math.min(this.multiCount - 1, 4)] || "5️⃣";
                         ctx.fillText(symbol, cx, cy + cyOffset);
                     } else {
-                    if (this.isPunchingBot && this.punchPhase === 'punching') {
-                        let punchOffset = Math.sin((this.punchTimer % 30) / 30 * Math.PI) * 80;
-                        ctx.save();
-                        ctx.translate(cx + punchOffset, cy + cyOffset);
-                        ctx.scale(-1, 1);
-                        ctx.fillText(this.card.symbol, 0, 0);
-                        ctx.restore();
+                    if (this.isPunchingBot && (this.punchPhase === 'punching' || this.overdrive)) {
+                        if (this.overdrive) {
+                            // "ORA ORA ORA!" - Draw many fists in a blur
+                            for (let p = 0; p < 8; p++) {
+                                let angle = (frame * 0.5 + p * Math.PI / 4);
+                                let dist = 40 + Math.sin(frame * 0.8 + p) * 30;
+                                ctx.save();
+                                ctx.translate(cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist + cyOffset);
+                                ctx.scale(-1, 1);
+                                ctx.globalAlpha = 0.6;
+                                ctx.fillText(this.card.symbol, 0, 0);
+                                ctx.restore();
+                            }
+                            // Also draw the core bot body
+                            ctx.save();
+                            ctx.translate(cx, cy + cyOffset);
+                            ctx.scale(-1, 1);
+                            ctx.fillText(this.card.symbol, 0, 0);
+                            ctx.restore();
+                        } else {
+                            let punchOffset = Math.sin((this.punchTimer % 30) / 30 * Math.PI) * 80;
+                            ctx.save();
+                            ctx.translate(cx + punchOffset, cy + cyOffset);
+                            ctx.scale(-1, 1);
+                            ctx.fillText(this.card.symbol, 0, 0);
+                            ctx.restore();
+                        }
                     } else {
                         ctx.save();
                         ctx.translate(cx, cy + cyOffset);
@@ -2008,7 +2047,7 @@
                         let renderId = this.card.id;
                         let isBigDoubleNorm = (this.card.id === 9 || this.card.id === 13) && this.overdrive && this.overdriveTimer <= 61;
                         if (isBigDoubleNorm) renderId = 1; // Render as single Blaster Bot cannon
-                        BotGraphics[renderId](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase} : undefined));
+                        BotGraphics[renderId](ctx, 1, this.card.id === 13 ? this.multiCount : (this.card.id === 20 ? {timer: this.punchTimer, phase: this.punchPhase, overdrive: this.overdrive} : undefined));
                     }
 
                     if (this.overdrive) {
@@ -2112,9 +2151,23 @@
                 }
 
                 if (this.isPunchingBot) {
-                    if (this.punchPhase === 'idle') {
+                    if (this.overdrive) {
+                        // ORA ORA ORA! Rapid AoE 3x3 punches
+                        for (let i = 0; i < attackers.length; i++) {
+                            let alien = attackers[i];
+                            let dx = Math.abs((alien.x + alien.width/2) - (this.x + CELL_SIZE/2));
+                            let dy = Math.abs((alien.y + alien.height/2) - (this.y + CELL_SIZE/2));
+                            if (dx <= CELL_SIZE * 1.5 && dy <= CELL_SIZE * 1.5 && !alien.hasBalloon) {
+                                alien.health -= 25 * gameSpeed; // MASSIVE rapid damage
+                                if (frame % 15 === 0) {
+                                    floatingTexts.push(new FloatingText(alien.x, alien.y, "ORA!", "244, 63, 94", 0.5));
+                                }
+                            }
+                        }
+                        if (frame % 4 === 0) SoundEngine.hit();
+                    } else if (this.punchPhase === 'idle') {
                         // Look for alien in same row and close proximity in front
-                        let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                        let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5 && !a.hasBalloon);
                         if (alienAhead) {
                             this.punchPhase = 'punching';
                             this.punchTimer = 0;
@@ -2123,7 +2176,7 @@
                         this.punchTimer++;
                         // One punch every 30 frames (0.5 seconds)
                         if (this.punchTimer === 15) { // Hit at the peak of the punch
-                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5 && !a.hasBalloon);
                             if (alienAhead) {
                                 alienAhead.health -= 30; // Reduced damage
                                 SoundEngine.hit();
@@ -2131,7 +2184,7 @@
                             }
                         }
                         if (this.punchTimer >= 30) {
-                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5);
+                            let alienAhead = attackers.find(a => a.y === this.y && a.x > this.x && a.x < this.x + CELL_SIZE * 2.5 && !a.hasBalloon);
                             if (alienAhead) {
                                 this.punchTimer = 0; // Continue punching
                             } else {
@@ -2230,7 +2283,7 @@
 
                 let shouldFire = false;
                 if (this.isShooter) {
-                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || this.card.id === 14 || this.card.id === 16 || (this.card.id === 9 && this.overdriveTimer > 61))) {
+                    if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 10 || this.card.id === 14 || this.card.id === 16 || this.card.id === 18 || this.card.id === 19 || (this.card.id === 9 && this.overdriveTimer > 61))) {
                         // 0.1 seconds = 6 frames. At 2 timer ticks per frame, we check every 12 ticks.
                         if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
                             shouldFire = true; 
@@ -2339,8 +2392,8 @@
                             shotFired = true;
                         }
                     } else {
-                        if (alienInLane) {
-                            if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 14)) {
+                        if (alienInLane || this.overdrive) {
+                            if (this.overdrive && (this.card.id === 1 || this.card.id === 3 || this.card.id === 14 || this.card.id === 19)) {
                                 const xOffsets = [0, 15, -15, 15, -15];
                                 const yOffsets = [0, -15, -15, 15, 15];
                                 for (let b = 0; b < 5; b++) {
@@ -2360,9 +2413,32 @@
                     }
                 }
 
-                if (this.isHomingShooter && Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
-                    if (attackers.length > 0) {
-                        projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 6, 12, "#f43f5e", 0, false, false, false, true, false));
+                if (this.isHomingShooter) {
+                    let shouldHomingFire = false;
+                    if (this.overdrive) {
+                        if (Math.floor(prevT / 12) < Math.floor(this.timer / 12)) {
+                            shouldHomingFire = true;
+                        }
+                    } else if (Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
+                        if (attackers.length > 0) {
+                            shouldHomingFire = true;
+                        }
+                    }
+
+                    if (shouldHomingFire) {
+                        if (this.overdrive) {
+                            let gridStartY = getGridStartY();
+                            for (let row = 0; row < activeRows; row++) {
+                                let rowY = gridStartY + row * CELL_SIZE;
+                                const xOffsets = [0, 15, -15, 15, -15];
+                                const yOffsets = [0, -15, -15, 15, 15];
+                                for (let b = 0; b < 5; b++) {
+                                    projectiles.push(new Projectile(this.x + CELL_SIZE + xOffsets[b], rowY + CELL_SIZE / 2 + yOffsets[b], 6, 12, "#f43f5e", 0, false, false, false, true, false));
+                                }
+                            }
+                        } else {
+                            projectiles.push(new Projectile(this.x + CELL_SIZE, this.y + CELL_SIZE / 2, 6, 12, "#f43f5e", 0, false, false, false, true, false));
+                        }
                         SoundEngine.missile();
                         this.offsetX = 5;
                         setTimeout(() => this.offsetX = 10, 100);
@@ -3701,6 +3777,7 @@
                         selectedCardType = null; 
                     } else if ((canAfford || (level >= 25 && level <= 30)) && isReady) {
                         selectedCardType = card.id;
+                        usingUltra = false; // Deselect Ultra if we select a card/tool
                     }
                     mouse.clicked = false; 
                 }
@@ -3760,7 +3837,7 @@
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14 || targetDef.card.id === 16) {
+                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14 || targetDef.card.id === 16 || targetDef.card.id === 18 || targetDef.card.id === 19 || targetDef.card.id === 20) {
                         targetDef.overdriveTimer = 60; // 1 second burst
                     } else if (targetDef.card.id === 3) {
                         targetDef.overdriveTimer = 120; // 2 seconds burst
@@ -3779,12 +3856,26 @@
                         targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
                     }
                     
-                    if (targetDef.card.id === 0) { // Battery Bot instant generation
-                        energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
-                        energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
-                        energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + 15, false)); // Top-Right
+                    if (targetDef.card.id === 0 || targetDef.card.id === 17) { // Instant effect units
+                        if (targetDef.card.id === 0) {
+                            energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
+                            energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
+                            energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + 15, false)); // Top-Right
+                        }
                         
-                        targetDef.overdrive = false; // Immediately revoke the status
+                        if (targetDef.card.id === 17) { // Flame Bot overdrive: Board-wide fire conversion
+                            projectiles.forEach(p => {
+                                if (!p.isFire) {
+                                    p.isFire = true;
+                                    p.isFreeze = false;
+                                    p.color = "#f97316";
+                                    p.damage = Math.floor(p.damage * 1.5);
+                                }
+                            });
+                            floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "FIRE WAVE!", "249, 115, 22"));
+                        }
+
+                        targetDef.overdrive = false; // Immediately revoke the status for instant effect units
                         targetDef.overdriveTimer = 0;
                     } else {
                         let hpMult = targetDef.isShield ? 2.5 : 1.5;
@@ -4578,6 +4669,11 @@
                 if (framesToRun > 4) framesToRun = 4;
                 
                 let totalSteps = framesToRun * gameSpeed;
+                
+                // Missile Bot Overdrive Speed Boost: Tripling steps to keep up with the swarm!
+                if (defenders.some(d => d.isHomingShooter && d.overdrive)) {
+                    totalSteps *= 3;
+                }
 
                 for (let step = 0; step < totalSteps; step++) {
                     if (!gameRunning) break; 
