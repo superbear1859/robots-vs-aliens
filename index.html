@@ -3856,7 +3856,7 @@
                         targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
                     }
                     
-                    if (targetDef.card.id === 0 || targetDef.card.id === 17) { // Instant effect units
+                    if (targetDef.card.id === 0 || targetDef.card.id === 17 || targetDef.card.id === 22 || targetDef.card.id === 23) { // Instant effect units
                         if (targetDef.card.id === 0) {
                             energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
                             energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
@@ -3873,6 +3873,31 @@
                                 }
                             });
                             floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "FIRE WAVE!", "249, 115, 22"));
+                        }
+
+                        if (targetDef.card.id === 22) { // Ultra Grenade overdrive: Rain of fire
+                            let gridStartY = getGridStartY();
+                            for (let row = 0; row < activeRows; row++) {
+                                let rowY = gridStartY + row * CELL_SIZE;
+                                for (let n = 0; n < 4; n++) {
+                                    let tx = GRID_START_X + (Math.random() * COLS * CELL_SIZE);
+                                    let ty = rowY + CELL_SIZE/2;
+                                    // Projectile(x, y, radius, damage, color, range, isPlasma, isFreeze, isGrenade, isHoming, isManual, targetX, targetY, isUltraGrenade, isLaser)
+                                    projectiles.push(new Projectile(targetDef.x + CELL_SIZE/2, targetDef.y + CELL_SIZE/2, 30, 800, "#020617", 2000, false, false, true, false, true, tx, ty, true, false));
+                                }
+                            }
+                            floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "GRENADE RAIN!", "249, 115, 22"));
+                        }
+
+                        if (targetDef.card.id === 23) { // Frost Gate overdrive: Board-wide freeze conversion
+                            projectiles.forEach(p => {
+                                if (!p.isFreeze) {
+                                    p.isFreeze = true;
+                                    p.isFire = false;
+                                    p.color = "#93c5fd";
+                                }
+                            });
+                            floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "FROST WAVE!", "147, 197, 253"));
                         }
 
                         targetDef.overdrive = false; // Immediately revoke the status for instant effect units
