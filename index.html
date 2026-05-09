@@ -794,7 +794,12 @@
             { type: 'berserker', hp: 800, speed: 0.25, damage: 3.0, color: '#ea580c', radius: 38, score: 120 },
             { type: 'shooter', hp: 150, speed: 0.18, damage: 0.3, color: '#38bdf8', radius: 30, score: 40 },
             { type: 'reader', hp: 300, speed: 0.22, damage: 0.5, color: '#fcd34d', radius: 30, score: 30 },
-            { type: 'balloon', hp: 120, speed: 0.28, damage: 0.2, color: '#fb7185', radius: 25, score: 35 }
+            { type: 'balloon', hp: 120, speed: 0.28, damage: 0.2, color: '#fb7185', radius: 25, score: 35 },
+            { type: 'vanguard', hp: 600, speed: 0.35, damage: 2.0, color: '#6366f1', radius: 36, score: 80 },
+            { type: 'colossus', hp: 3000, speed: 0.03, damage: 10.0, color: '#1e1b4b', radius: 55, score: 250 },
+            { type: 'shadow', hp: 200, speed: 0.55, damage: 1.0, color: '#4c1d95', radius: 28, score: 60 },
+            { type: 'hornet', hp: 100, speed: 0.75, damage: 0.5, color: '#eab308', radius: 22, score: 50 },
+            { type: 'behemoth', hp: 5000, speed: 0.02, damage: 15.0, color: '#334155', radius: 60, score: 500 }
         ];
 
         // --- Custom Bot Canvas Drawing Functions ---
@@ -2496,12 +2501,22 @@
                 if (level >= 5) availableTypes.push(10); // shooter
                 if (level >= 7) availableTypes.push(11); // reader
                 if (level >= 13) availableTypes.push(12); // balloon
+                if (level >= 15) availableTypes.push(13); // vanguard
+                if (level >= 18) availableTypes.push(14); // colossus
+                if (level >= 12) availableTypes.push(15); // shadow
+                if (level >= 14) availableTypes.push(16); // hornet
+                if (level >= 20) availableTypes.push(17); // behemoth
 
                 let typeIdx = 0;
                 let roll = Math.random();
                 
-                if (availableTypes.includes(8) && roll > 0.95) typeIdx = 8;
-                else if (availableTypes.includes(9) && roll > 0.90) typeIdx = 9;
+                if (availableTypes.includes(17) && roll > 0.99) typeIdx = 17;
+                else if (availableTypes.includes(14) && roll > 0.98) typeIdx = 14;
+                else if (availableTypes.includes(8) && roll > 0.95) typeIdx = 8;
+                else if (availableTypes.includes(13) && roll > 0.92) typeIdx = 13;
+                else if (availableTypes.includes(15) && roll > 0.89) typeIdx = 15;
+                else if (availableTypes.includes(16) && roll > 0.85) typeIdx = 16;
+                else if (availableTypes.includes(9) && roll > 0.80) typeIdx = 9;
                 else if (availableTypes.includes(10) && roll > 0.76) typeIdx = 10;
                 else if (availableTypes.includes(11) && roll > 0.65) typeIdx = 11;
                 else if (availableTypes.includes(12) && roll > 0.55) typeIdx = 12;
@@ -2898,6 +2913,85 @@
                             ctx.fillRect(cx - 26, cy + 4, 18, 24);
                         }
                     }
+                } else if (this.type === 'vanguard') {
+                    // Shield-shaped aggressive unit
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - this.radius);
+                    ctx.lineTo(cx + this.radius * 0.8, cy - this.radius * 0.4);
+                    ctx.lineTo(cx + this.radius * 0.8, cy + this.radius * 0.8);
+                    ctx.lineTo(cx, cy + this.radius * 1.2);
+                    ctx.lineTo(cx - this.radius * 0.8, cy + this.radius * 0.8);
+                    ctx.lineTo(cx - this.radius * 0.8, cy - this.radius * 0.4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inner glowing stripe
+                    ctx.strokeStyle = currentColor + "aa";
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - this.radius * 0.6);
+                    ctx.lineTo(cx, cy + this.radius * 0.8);
+                    ctx.stroke();
+                } else if (this.type === 'colossus') {
+                    // Massive blocky unit
+                    ctx.beginPath();
+                    ctx.roundRect(cx - this.radius, cy - this.radius, this.radius * 2, this.radius * 2, 10);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Armor plates
+                    ctx.fillStyle = currentColor + "33";
+                    ctx.fillRect(cx - this.radius + 10, cy - this.radius + 10, this.radius * 2 - 20, 15);
+                    ctx.fillRect(cx - this.radius + 10, cy + this.radius - 25, this.radius * 2 - 20, 15);
+                    // Central pulsing core
+                    let pulse = 0.8 + Math.abs(Math.sin(frame * 0.05)) * 0.4;
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 15 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'shadow') {
+                    // Wispy, elongated phantom-like unit
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, this.radius * 0.8, this.radius * 1.2, frame * 0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Shadow trail effect (just a few inner ellipses)
+                    ctx.globalAlpha = 0.3;
+                    ctx.beginPath();
+                    ctx.ellipse(cx + 5, cy, this.radius * 0.6, this.radius * 1.0, frame * 0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                } else if (this.type === 'hornet') {
+                    // Triangular fast unit
+                    ctx.beginPath();
+                    ctx.moveTo(cx - this.radius, cy);
+                    ctx.lineTo(cx, cy - this.radius * 0.6);
+                    ctx.lineTo(cx + this.radius, cy);
+                    ctx.lineTo(cx, cy + this.radius * 0.6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Yellow/Black stripes
+                    ctx.strokeStyle = "#000";
+                    ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(cx - 5, cy - 10); ctx.lineTo(cx - 5, cy + 10); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(cx + 5, cy - 10); ctx.lineTo(cx + 5, cy + 10); ctx.stroke();
+                } else if (this.type === 'behemoth') {
+                    // Massive grey plated giant
+                    ctx.beginPath();
+                    ctx.roundRect(cx - this.radius, cy - this.radius, this.radius * 2, this.radius * 2, 15);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Vertical armor slots
+                    ctx.fillStyle = "#1e293b";
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.fillRect(cx + i * 15 - 3, cy - this.radius + 10, 6, this.radius * 2 - 20);
+                    }
+                    // Glowing eyes (small)
+                    ctx.fillStyle = "#ef4444";
+                    ctx.beginPath();
+                    ctx.arc(cx - 15, cy - 15, 5, 0, Math.PI * 2);
+                    ctx.arc(cx + 15, cy - 15, 5, 0, Math.PI * 2);
+                    ctx.fill();
                 } else if (this.type === 'balloon') {
                     // Body hanging below
                     ctx.beginPath();
@@ -3024,7 +3118,7 @@
                 if (this.type === 'reader') {
                     if (this.health <= this.maxHealth * 0.8) {
                         this.speed = this.originalSpeed * 2.8;
-                        this.damage = this.baseDamage * 0.5;
+                        this.damage = this.baseDamage * 2.0;
                     } else {
                         this.speed = this.originalSpeed;
                         this.damage = this.baseDamage;
