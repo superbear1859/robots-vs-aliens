@@ -3145,9 +3145,9 @@
                         this.speed = 0.25 * this.speedMultiplier;
                     } else {
                         // Parabolic jump
-                        this.vaultY = -Math.sin(progress * Math.PI) * 120;
-                        // Fast forward movement during the vault to clear the bot and reach the next space
-                        let jumpStep = (CELL_SIZE * 1.4) / 45;
+                        this.vaultY = -Math.sin(progress * Math.PI) * 150;
+                        // Fast forward movement during the vault to clear two bots and reach the next space
+                        let jumpStep = (CELL_SIZE * 2.5) / 45;
                         this.x -= jumpStep;
                         this.frameX += 3.5;
                         return; // Skip normal movement/actions while in mid-air
