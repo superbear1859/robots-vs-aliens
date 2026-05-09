@@ -799,7 +799,8 @@
             { type: 'colossus', hp: 3000, speed: 0.03, damage: 10.0, color: '#1e1b4b', radius: 55, score: 250 },
             { type: 'shadow', hp: 200, speed: 0.55, damage: 1.0, color: '#4c1d95', radius: 28, score: 60 },
             { type: 'hornet', hp: 100, speed: 0.75, damage: 0.5, color: '#eab308', radius: 22, score: 50 },
-            { type: 'behemoth', hp: 5000, speed: 0.02, damage: 15.0, color: '#334155', radius: 60, score: 500 }
+            { type: 'behemoth', hp: 5000, speed: 0.02, damage: 15.0, color: '#334155', radius: 60, score: 500 },
+            { type: 'polevaulter', hp: 120, speed: 0.6, damage: 0.5, color: '#4d7c0f', radius: 30, score: 45 }
         ];
 
         // --- Custom Bot Canvas Drawing Functions ---
@@ -2506,6 +2507,7 @@
                 if (level >= 12) availableTypes.push(15); // shadow
                 if (level >= 14) availableTypes.push(16); // hornet
                 if (level >= 20) availableTypes.push(17); // behemoth
+                if (level >= 5) availableTypes.push(18); // polevaulter
 
                 let typeIdx = 0;
                 let roll = Math.random();
@@ -2516,6 +2518,7 @@
                 else if (availableTypes.includes(13) && roll > 0.92) typeIdx = 13;
                 else if (availableTypes.includes(15) && roll > 0.89) typeIdx = 15;
                 else if (availableTypes.includes(16) && roll > 0.85) typeIdx = 16;
+                else if (availableTypes.includes(18) && roll > 0.82) typeIdx = 18;
                 else if (availableTypes.includes(9) && roll > 0.80) typeIdx = 9;
                 else if (availableTypes.includes(10) && roll > 0.76) typeIdx = 10;
                 else if (availableTypes.includes(11) && roll > 0.65) typeIdx = 11;
@@ -2544,6 +2547,7 @@
                 this.width = CELL_SIZE * 0.8;
                 this.height = CELL_SIZE * 0.8;
                 
+                this.speedMultiplier = speedMultiplier;
                 this.originalSpeed = config.speed * speedMultiplier;
                 this.speed = this.originalSpeed;
                 this.movement = this.speed;
@@ -2553,12 +2557,17 @@
                 this.freezeTimer = 0; // Timer for freeze effect
                 this.burnTimer = 0; // Timer for burn effect
                 this.dropsUltra = Math.random() < 0.15;
+                
+                this.hasPole = this.type === 'polevaulter';
+                this.isVaulting = false;
+                this.vaultTimer = 0;
+                this.vaultY = 0;
             }
 
             draw() {
                 const wiggle = Math.sin(this.frameX * 0.2) * 3;
                 const cx = this.x + CELL_SIZE / 2;
-                const cy = this.y + CELL_SIZE / 2 + wiggle;
+                const cy = this.y + CELL_SIZE / 2 + wiggle + this.vaultY;
 
                 ctx.save();
                 
@@ -2573,6 +2582,16 @@
 
                 if (this.dropsUltra) {
                     currentColor = "#a855f7"; // Intense purple for Ultra droppers
+                }
+
+                if (this.hasPole) {
+                    ctx.strokeStyle = "#78350f";
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = "round";
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 10, cy + 20);
+                    ctx.lineTo(cx - 30, cy - 60);
+                    ctx.stroke();
                 }
 
                 ctx.shadowColor = currentColor;
@@ -2992,6 +3011,21 @@
                     ctx.arc(cx - 15, cy - 15, 5, 0, Math.PI * 2);
                     ctx.arc(cx + 15, cy - 15, 5, 0, Math.PI * 2);
                     ctx.fill();
+                } else if (this.type === 'polevaulter') {
+                    // Slim athletic alien
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, this.radius * 0.7, this.radius * 1.1, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Athletic stripes
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - this.radius * 0.5, cy - 5);
+                    ctx.lineTo(cx + this.radius * 0.5, cy - 5);
+                    ctx.moveTo(cx - this.radius * 0.5, cy + 5);
+                    ctx.lineTo(cx + this.radius * 0.5, cy + 5);
+                    ctx.stroke();
                 } else if (this.type === 'balloon') {
                     // Body hanging below
                     ctx.beginPath();
@@ -3100,6 +3134,26 @@
             }
 
             update() {
+                if (this.isVaulting) {
+                    this.vaultTimer++;
+                    let jumpDuration = 45;
+                    let progress = this.vaultTimer / jumpDuration;
+                    if (progress >= 1) {
+                        this.isVaulting = false;
+                        this.vaultY = 0;
+                        // Slow down to Scout speed after losing the pole
+                        this.speed = 0.25 * this.speedMultiplier;
+                    } else {
+                        // Parabolic jump
+                        this.vaultY = -Math.sin(progress * Math.PI) * 120;
+                        // Fast forward movement during the vault to clear the bot and reach the next space
+                        let jumpStep = (CELL_SIZE * 1.4) / 45;
+                        this.x -= jumpStep;
+                        this.frameX += 3.5;
+                        return; // Skip normal movement/actions while in mid-air
+                    }
+                }
+
                 let moving = true;
                 if (this.type === 'shooter') {
                     if (this.shootTimer === undefined) this.shootTimer = 0;
@@ -4328,12 +4382,8 @@
                                 SoundEngine.energy(); // Temporary pop sound
                                 floatingTexts.push(new FloatingText(attackers[j].x, attackers[j].y - 40, "POP!", "251, 113, 133"));
                             }
-                            // Ignore damage but consume standard projectile
-                            if (!projectiles[i].isLaser) {
-                                projHit = true;
-                            }
-                            if (projHit) break;
-                            continue;
+                            // Projectiles now pass through balloon aliens while they are in the air
+                            continue; 
                         }
 
                         attackers[j].health -= projectiles[i].damage;
@@ -4432,6 +4482,14 @@
                     let defender = defenders[j];
                     if (collision(attacker, defender)) {
                         
+                        if (attacker.hasPole && !defender.isSpike) {
+                            attacker.isVaulting = true;
+                            attacker.hasPole = false;
+                            attacker.vaultTimer = 0;
+                            SoundEngine.rocket(); // Reusing rocket sound for the "whoosh"
+                            continue; // Immediately start the vault and skip damage this frame
+                        }
+                        
                         if (defender.isSquash && defender.squashState === 'jumping') {
                             continue; // Skip physical collision while flying through the air
                         }
@@ -4442,7 +4500,7 @@
                             isAttacking = false;
                         } else if (defender.isSpike) {
                             // Aliens DO NOT stop to eat the spike. They walk over it.
-                            if (defender.isSpikesExtended()) {
+                            if (defender.isSpikesExtended() && attacker.type !== 'polevaulter') {
                                 if (attacker.hasBalloon) {
                                     attacker.hasBalloon = false;
                                     SoundEngine.energy(); 
@@ -5022,12 +5080,29 @@
                         slotDiv.style.border = `2px solid ${bot.color}`;
                         slotDiv.style.background = tileColor;
                         
+                        let displaySymbol = getBotSymbolHTML(bot);
+                        let displayName = bot.name;
+                        if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
+                            displaySymbol = `<div style="position:relative; display:flex; align-items:center; justify-content:center;">
+                                ${getBotSymbolHTML(bot)}
+                                <div style="position:absolute; bottom:-8px; right:-8px; font-size:12px; background:#0f172a; border-radius:4px; padding:2px; border:1px solid ${imitaterChoice.color}; display:flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                                    ${getBotSymbolHTML(imitaterChoice)}
+                                </div>
+                            </div>`;
+                            displayName = imitaterChoice.name;
+                        }
+
+                        let displayCost = bot.cost;
+                        if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
+                            displayCost = imitaterChoice.cost;
+                        }
+
                         slotDiv.innerHTML = `
                             <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
-                                ${getBotSymbolHTML(bot)}
+                                ${displaySymbol}
                             </div>
-                            <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
-                            <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
+                            <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.id === 21 && imitaterChoice ? 'Imitating:' : ''} ${displayName}</span>
+                            <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${displayCost}⚡</span>
                         `;
                         slotDiv.onclick = () => {
                             currentLoadout.splice(i, 1);
@@ -5057,12 +5132,26 @@
                 cardDiv.style.border = `2px solid ${bot.color}`;
                 cardDiv.style.background = tileColor;
                 
+                let poolSymbol = getBotSymbolHTML(bot);
+                let poolName = bot.name;
+                let poolCost = bot.cost;
+                if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
+                    poolSymbol = `<div style="position:relative; display:flex; align-items:center; justify-content:center;">
+                        ${getBotSymbolHTML(bot)}
+                        <div style="position:absolute; bottom:-8px; right:-8px; font-size:12px; background:#0f172a; border-radius:4px; padding:2px; border:1px solid ${imitaterChoice.color}; display:flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                            ${getBotSymbolHTML(imitaterChoice)}
+                        </div>
+                    </div>`;
+                    poolName = isSelected ? imitaterChoice.name : bot.name;
+                    poolCost = isSelected ? imitaterChoice.cost : bot.cost;
+                }
+
                 cardDiv.innerHTML = `
                     <div style="color:${bot.color}; height: 35px; display: flex; align-items: center; justify-content: center;">
-                        ${getBotSymbolHTML(bot)}
+                        ${poolSymbol}
                     </div>
-                    <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.name}</span>
-                    <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${bot.cost}⚡</span>
+                    <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.id === 21 && isSelected && imitaterChoice ? 'Imitating:' : ''} ${poolName}</span>
+                    <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${poolCost}⚡</span>
                 `;
                 
                 if (!isSelected) {
