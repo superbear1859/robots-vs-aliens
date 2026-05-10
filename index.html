@@ -2128,7 +2128,8 @@
                         
                         for (let i = 0; i < attackers.length; i++) {
                             let alien = attackers[i];
-                            if (alien.y === this.y && !alien.hasBalloon) {
+                            let unchompable = ['apex', 'colossus', 'behemoth'];
+                            if (alien.y === this.y && !alien.hasBalloon && !unchompable.includes(alien.type)) {
                                 let dist = alien.x - this.x; 
                                 // Allows eating aliens slightly behind it or up to 1.5 blocks in front
                                 if (dist >= -CELL_SIZE/2 && dist < minDist) {
@@ -3733,7 +3734,9 @@
             ctx.font = "bold 24px Orbitron";
             ctx.textAlign = "left";
             ctx.textBaseline = "middle";
-            ctx.fillText(`⚡ ${energy}`, 20, 80);
+            if (!(level >= 25 && level <= 30)) {
+                ctx.fillText(`⚡ ${energy}`, 20, 80);
+            }
 
             // Update HTML Ultra Counter
             if (ultraCounter) {
@@ -4112,11 +4115,11 @@
             if (!(level >= 25 && level <= 30)) return;
             
             let spawnRate = 270; // Default 4.5 seconds
-            let pool = [0, 1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23];
+            let pool = [1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23];
             
             if (level === 25 || level === 26) {
-                // Classic Mix
-                pool = [0, 1, 2, 4, 5, 7, 12, 15, 20];
+                // Classic Mix (Battery Bot removed)
+                pool = [1, 2, 4, 5, 7, 12, 15, 20];
             } else if (level === 27 || level === 28) {
                 // Heavy Explosives
                 pool = [4, 7, 8, 12, 17, 19, 20, 22]; 
@@ -4544,7 +4547,7 @@
         }
 
         function manageEnergyDrops() {
-            if (frame % 500 === 0 && frame > 0 && frame < currentFramesLimit) {
+            if (frame % 500 === 0 && frame > 0 && frame < currentFramesLimit && !(level >= 25 && level <= 30)) {
                 let x = GRID_START_X + Math.random() * (COLS * CELL_SIZE);
                 let targetY = getGridStartY() + Math.random() * (activeRows * CELL_SIZE);
                 energyDrops.push(new Energy(x, targetY, true));
