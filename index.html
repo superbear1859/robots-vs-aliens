@@ -4213,8 +4213,8 @@
                         targetDef.overdriveTimer = 121; // 1s X-burst, 1s charging, 1 frame big shot
                     } else if (targetDef.card.id === 13 || targetDef.card.id === 18) {
                         targetDef.overdriveTimer = 61; // 1s charging, 1 frame big shot
-                    } else if (targetDef.card.id === 7 || targetDef.card.id === 8) {
-                        targetDef.overdriveTimer = 600; // 10 seconds magnetic pull
+                    } else if (targetDef.card.id === 7 || targetDef.card.id === 8 || targetDef.card.id === 24) {
+                        targetDef.overdriveTimer = 600; // 10 seconds magnetic pull / ultra puncher
                     } else if (targetDef.card.id === 2 || targetDef.card.id === 11) {
                         targetDef.overdriveTimer = Infinity; // Permanent health buff
                     } else if (targetDef.card.id === 15) {
