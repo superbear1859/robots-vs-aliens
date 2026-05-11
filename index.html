@@ -2629,24 +2629,30 @@
                     this.targetY = y;
                 } else {
                     let availableTypes = [0]; // scout
-                    if (level >= 3) availableTypes.push(1); // brute
-                    if (level >= 4) availableTypes.push(2); // runner
-                    if (level >= 5) availableTypes.push(3); // goliath
-                    if (level >= 6) availableTypes.push(4); // stinger
-                    if (level >= 7) availableTypes.push(5); // phantom
-                    if (level >= 8) availableTypes.push(6); // bulwark
-                    if (level >= 9) availableTypes.push(7); // weaver
-                    if (level >= 10) availableTypes.push(8); // apex
-                    if (level >= 11) availableTypes.push(9); // berserker
-                    if (level >= 5) availableTypes.push(10); // shooter
-                    if (level >= 7) availableTypes.push(11); // reader
-                    if (level >= 13) availableTypes.push(12); // balloon
-                    if (level >= 15) availableTypes.push(13); // vanguard
-                    if (level >= 18) availableTypes.push(14); // colossus
-                    if (level >= 12) availableTypes.push(15); // shadow
-                    if (level >= 14) availableTypes.push(16); // hornet
-                    if (level >= 20) availableTypes.push(17); // behemoth
-                    if (level >= 5) availableTypes.push(18); // polevaulter
+                    if (wave <= 2) {
+                        if (level >= 3) availableTypes.push(1); // brute
+                        if (level >= 9) availableTypes.push(7); // weaver
+                        if (level >= 5) availableTypes.push(18); // polevaulter
+                    } else {
+                        if (level >= 3) availableTypes.push(1); // brute
+                        if (level >= 4) availableTypes.push(2); // runner
+                        if (level >= 5) availableTypes.push(3); // goliath
+                        if (level >= 6) availableTypes.push(4); // stinger
+                        if (level >= 7) availableTypes.push(5); // phantom
+                        if (level >= 8) availableTypes.push(6); // bulwark
+                        if (level >= 9) availableTypes.push(7); // weaver
+                        if (level >= 10) availableTypes.push(8); // apex
+                        if (level >= 11) availableTypes.push(9); // berserker
+                        if (level >= 5) availableTypes.push(10); // shooter
+                        if (level >= 7) availableTypes.push(11); // reader
+                        if (level >= 13) availableTypes.push(12); // balloon
+                        if (level >= 15) availableTypes.push(13); // vanguard
+                        if (level >= 18) availableTypes.push(14); // colossus
+                        if (level >= 12) availableTypes.push(15); // shadow
+                        if (level >= 14) availableTypes.push(16); // hornet
+                        if (level >= 20) availableTypes.push(17); // behemoth
+                        if (level >= 5) availableTypes.push(18); // polevaulter
+                    }
 
                     let typeIdx = 0;
                     let roll = Math.random();
