@@ -3143,8 +3143,15 @@
                     // Giant Boss Goliath
                     ctx.beginPath();
                     ctx.roundRect(cx - this.radius, cy - this.radius * 1.4, this.radius * 2, this.radius * 2.8, 20);
+                    if (this.shootTimer > 300) {
+                        let flashAlpha = (this.shootTimer - 300) / 60;
+                        ctx.fillStyle = `rgba(234, 179, 8, ${0.5 + flashAlpha * 0.5})`; // Glow yellow
+                        ctx.shadowColor = "#eab308";
+                        ctx.shadowBlur = 20 * flashAlpha;
+                    }
                     ctx.fill();
                     ctx.stroke();
+                    ctx.shadowBlur = 0;
                     ctx.fillStyle = "#1e293b";
                     ctx.fillRect(cx - 20, cy - 80, 40, 160);
                     ctx.fillStyle = "#ef4444";
@@ -3316,10 +3323,14 @@
                 
                 if (this.type === 'boss') {
                     // Shift logic
-                    if (Math.abs(this.targetY - this.y) > 2) {
-                        this.y += Math.sign(this.targetY - this.y) * 2;
+                    if (this.targetX === undefined) this.targetX = this.x;
+                    
+                    if (Math.abs(this.targetY - this.y) > 2 || Math.abs(this.targetX - this.x) > 2) {
+                        if (Math.abs(this.targetY - this.y) > 2) this.y += Math.sign(this.targetY - this.y) * 2;
+                        if (Math.abs(this.targetX - this.x) > 2) this.x += Math.sign(this.targetX - this.x) * 2;
                     } else {
                         this.y = this.targetY;
+                        this.x = this.targetX;
                         this.shiftTimer++;
                         if (this.shiftTimer >= 300) { // Shift every 5 seconds
                             this.shiftTimer = 0;
@@ -3328,6 +3339,10 @@
                             if (maxTopRow < 0) maxTopRow = 0;
                             let randomRow = Math.floor(Math.random() * (maxTopRow + 1));
                             this.targetY = getGridStartY() + (randomRow * CELL_SIZE);
+                            
+                            // 30% chance to step forward (col 6) instead of staying at back (col 8)
+                            let col = Math.random() < 0.3 ? 6 : 8;
+                            this.targetX = GRID_START_X + col * CELL_SIZE;
                         }
                     }
 
@@ -3337,16 +3352,16 @@
                         let potentialTargets = defenders.filter(d => (d.y >= this.y && d.y < this.y + this.height) && d.x < this.x);
                         if (potentialTargets.length > 0) {
                             let target = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
-                            alienProjectiles.push(new AlienProjectile(this.x, target.y + CELL_SIZE/2, 9999));
+                            alienProjectiles.push(new AlienProjectile(this.x, target.y + CELL_SIZE/2, 9999, true));
                             if (SoundEngine.shoot) SoundEngine.shoot(false);
                         }
                     }
 
-                    // Smash plants in right-most columns (columns 7 and 8)
+                    // Smash plants in front of or underneath the boss
                     this.smashTimer++;
                     if (this.smashTimer >= 60) { // Every 1 second check and destroy
                         this.smashTimer = 0;
-                        let smashX = GRID_START_X + 7 * CELL_SIZE; 
+                        let smashX = this.x - CELL_SIZE; 
                         for (let i = 0; i < defenders.length; i++) {
                             let d = defenders[i];
                             if (d.card.id !== 12 && d.x >= smashX && (d.y >= this.y && d.y < this.y + this.height)) {
@@ -3586,13 +3601,13 @@
         }
 
         class AlienProjectile {
-            constructor(x, y, damage) {
+            constructor(x, y, damage, isBoss = false) {
                 this.x = x;
                 this.y = y;
                 this.speed = 6;
                 this.damage = damage;
-                this.radius = 5;
-                this.color = "#38bdf8"; 
+                this.radius = isBoss ? 15 : 5;
+                this.color = isBoss ? "#eab308" : "#38bdf8"; 
             }
 
             draw() {
