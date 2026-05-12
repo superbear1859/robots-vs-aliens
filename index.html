@@ -3322,6 +3322,13 @@
                 let moving = true;
                 
                 if (this.type === 'boss') {
+                    if (this.bossJumpTimer > 0) {
+                        this.bossJumpTimer--;
+                        this.vaultY = -180 * Math.sin((this.bossJumpTimer / 30) * Math.PI); // Large jump arc
+                    } else {
+                        this.vaultY = 0;
+                    }
+
                     // Shift logic
                     if (this.targetX === undefined) this.targetX = this.x;
                     
@@ -3340,8 +3347,8 @@
                             let randomRow = Math.floor(Math.random() * (maxTopRow + 1));
                             this.targetY = getGridStartY() + (randomRow * CELL_SIZE);
                             
-                            // 30% chance to step forward (col 6) instead of staying at back (col 8)
-                            let col = Math.random() < 0.3 ? 6 : 8;
+                            // 30% chance to step forward (col 7) instead of staying at back (col 8)
+                            let col = Math.random() < 0.3 ? 7 : 8;
                             this.targetX = GRID_START_X + col * CELL_SIZE;
                         }
                     }
@@ -4670,6 +4677,11 @@
                             }
                             // Projectiles now pass through balloon aliens while they are in the air
                             continue; 
+                        }
+
+                        if (attackers[j].type === 'boss' && projectiles[i].isHoming) {
+                            attackers[j].bossJumpTimer = 30; // Jump for half a second!
+                            continue; // Projectile passes underneath
                         }
 
                         attackers[j].health -= projectiles[i].damage;
