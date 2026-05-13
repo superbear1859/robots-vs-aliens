@@ -1698,11 +1698,15 @@
                     for (let i = 0; i < attackers.length; i++) {
                         let alien = attackers[i];
                         if ((this.y >= alien.y && this.y < alien.y + alien.height) && collision(this, alien)) {
-                            score += alien.scoreValue;
-                            floatingTexts.push(new FloatingText(alien.x, alien.y, `+${alien.scoreValue}`, "255, 255, 255"));
-                            attackers.splice(i, 1);
-                            i--;
-                            SoundEngine.death();
+                            if (alien.type === 'boss') {
+                                alien.bossJumpTimer = 30; // Boss jumps over it
+                            } else {
+                                score += alien.scoreValue;
+                                floatingTexts.push(new FloatingText(alien.x, alien.y, `+${alien.scoreValue}`, "255, 255, 255"));
+                                attackers.splice(i, 1);
+                                i--;
+                                SoundEngine.death();
+                            }
                         }
                     }
                     if (this.x > CANVAS_WIDTH) {
