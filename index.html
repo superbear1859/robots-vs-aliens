@@ -1440,7 +1440,7 @@
                 // Double-height body!
                 ctx.fillStyle = "#4c0519"; // Deep crimson
                 ctx.beginPath();
-                ctx.roundRect(-20*s, -25*s, 40*s, 50*s, 8*s);
+                ctx.roundRect(-20*s, -75*s, 40*s, 150*s, 8*s);
                 ctx.fill();
                 ctx.strokeStyle = "#881337";
                 ctx.lineWidth = 3*s;
@@ -1448,12 +1448,12 @@
 
                 // Double visors
                 ctx.fillStyle = "#fbbf24";
-                ctx.fillRect(-15*s, -15*s, 30*s, 8*s);
-                ctx.fillRect(-15*s, 5*s, 30*s, 8*s);
+                ctx.fillRect(-15*s, -55*s, 30*s, 10*s);
+                ctx.fillRect(-15*s, 45*s, 30*s, 10*s);
                 ctx.shadowColor = "#fbbf24";
                 ctx.shadowBlur = 10*s;
-                ctx.fillRect(-15*s, -15*s, 30*s, 3*s);
-                ctx.fillRect(-15*s, 5*s, 30*s, 3*s);
+                ctx.fillRect(-15*s, -55*s, 30*s, 4*s);
+                ctx.fillRect(-15*s, 45*s, 30*s, 4*s);
                 ctx.shadowBlur = 0;
 
                 if (!info || !info.overdrive) {
@@ -1465,19 +1465,19 @@
 
                     // Two massive arms
                     ctx.strokeStyle = "#fb7185";
-                    ctx.lineWidth = 6*s;
+                    ctx.lineWidth = 10*s;
                     ctx.beginPath();
-                    ctx.moveTo(10*s, -10*s);
-                    ctx.lineTo((10 + (isPunching && Math.floor(frame/6)%2===0 ? extension : 0))*s, -10*s);
-                    ctx.moveTo(10*s, 10*s);
-                    ctx.lineTo((10 + (isPunching && Math.floor(frame/6)%2===1 ? extension : 0))*s, 10*s);
+                    ctx.moveTo(10*s, -50*s);
+                    ctx.lineTo((10 + (isPunching && Math.floor(frame/6)%2===0 ? extension : 0))*s, -50*s);
+                    ctx.moveTo(10*s, 50*s);
+                    ctx.lineTo((10 + (isPunching && Math.floor(frame/6)%2===1 ? extension : 0))*s, 50*s);
                     ctx.stroke();
 
                     // Fists
                     ctx.fillStyle = "#e11d48";
                     ctx.beginPath();
-                    ctx.roundRect((10 + (isPunching && Math.floor(frame/6)%2===0 ? extension : 0))*s, -15*s, 15*s, 15*s, 4*s);
-                    ctx.roundRect((10 + (isPunching && Math.floor(frame/6)%2===1 ? extension : 0))*s, 5*s, 15*s, 15*s, 4*s);
+                    ctx.roundRect((10 + (isPunching && Math.floor(frame/6)%2===0 ? extension : 0))*s, -60*s, 20*s, 20*s, 4*s);
+                    ctx.roundRect((10 + (isPunching && Math.floor(frame/6)%2===1 ? extension : 0))*s, 40*s, 20*s, 20*s, 4*s);
                     ctx.fill();
                 }
             }
@@ -2300,9 +2300,10 @@
                             
                             for (let i = 0; i < attackers.length; i++) {
                                 let alien = attackers[i];
-                                let dx = Math.abs((alien.x + alien.width/2) - cx);
-                                let dy = Math.abs((alien.y + alien.height/2) - cy);
-                                if (dx <= CELL_SIZE * 3 && dy <= CELL_SIZE * 2 && !alien.hasBalloon) {
+                                // Attack hitbox covers exactly 4 squares (2 rows tall, 2 columns wide)
+                                if ((alien.y >= this.y && alien.y < this.y + this.height) && 
+                                    (alien.x >= this.x && alien.x < this.x + CELL_SIZE * 2) && 
+                                    !alien.hasBalloon) {
                                     alien.health -= 75; 
                                     floatingTexts.push(new FloatingText(alien.x, alien.y, "ULTRA POW!", "159, 18, 57", 1.0));
                                 }
@@ -5179,10 +5180,26 @@
                     updateLevelProgress();
 
                     if (defenders.some(d => d.isUltraPuncher && d.overdrive)) {
-                        if (frame % 12 < 6) { // Flash on and off
+                        if (frame % 12 < 6) { // Draw falling fists
                             ctx.save();
-                            ctx.fillStyle = "#e11d48"; // Opaque Deep Rose Red
-                            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                            ctx.fillStyle = "#e11d48"; // Red fists
+                            for (let r = 0; r < activeRows; r++) {
+                                for (let c = 0; c < COLS; c++) {
+                                    let fistX = GRID_START_X + c * CELL_SIZE + CELL_SIZE/2 - 15;
+                                    let fistY = getGridStartY() + r * CELL_SIZE + CELL_SIZE/2 - 15 + ((frame % 6) * 5); // Fall downward slightly
+                                    
+                                    ctx.beginPath();
+                                    ctx.roundRect(fistX, fistY, 30, 30, 6);
+                                    ctx.fill();
+                                    
+                                    // Motion blur trail
+                                    ctx.globalAlpha = 0.5;
+                                    ctx.beginPath();
+                                    ctx.roundRect(fistX, fistY - 20, 30, 30, 6);
+                                    ctx.fill();
+                                    ctx.globalAlpha = 1.0;
+                                }
+                            }
                             ctx.restore();
                         }
                     }
@@ -5400,11 +5417,8 @@
                         let displaySymbol = getBotSymbolHTML(bot);
                         let displayName = bot.name;
                         if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
-                            displaySymbol = `<div style="position:relative; display:flex; align-items:center; justify-content:center;">
-                                ${getBotSymbolHTML(bot)}
-                                <div style="position:absolute; bottom:-8px; right:-8px; font-size:12px; background:#0f172a; border-radius:4px; padding:2px; border:1px solid ${imitaterChoice.color}; display:flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">
-                                    ${getBotSymbolHTML(imitaterChoice)}
-                                </div>
+                            displaySymbol = `<div style="filter: grayscale(100%) opacity(0.7); display:flex; align-items:center; justify-content:center;">
+                                ${getBotSymbolHTML(imitaterChoice)}
                             </div>`;
                             displayName = imitaterChoice.name;
                         }
@@ -5453,12 +5467,11 @@
                 let poolName = bot.name;
                 let poolCost = bot.cost;
                 if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
-                    poolSymbol = `<div style="position:relative; display:flex; align-items:center; justify-content:center;">
-                        ${getBotSymbolHTML(bot)}
-                        <div style="position:absolute; bottom:-8px; right:-8px; font-size:12px; background:#0f172a; border-radius:4px; padding:2px; border:1px solid ${imitaterChoice.color}; display:flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">
+                    if (isSelected) {
+                        poolSymbol = `<div style="filter: grayscale(100%) opacity(0.7); display:flex; align-items:center; justify-content:center;">
                             ${getBotSymbolHTML(imitaterChoice)}
-                        </div>
-                    </div>`;
+                        </div>`;
+                    }
                     poolName = isSelected ? imitaterChoice.name : bot.name;
                     poolCost = isSelected ? imitaterChoice.cost : bot.cost;
                 }
