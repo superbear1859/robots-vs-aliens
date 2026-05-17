@@ -779,7 +779,9 @@
             { id: 21, name: "Imitater", cost: 0, color: "#6366f1", symbol: "🎭", desc: "Copies another bot", hp: 100, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 22, name: "Ultra Grenade", cost: 350, color: "#0f172a", symbol: "💣", desc: "Giant Bomb fusion", hp: 1000, fireRate: 360, cooldown: 900, currentCooldown: 0 },
             { id: 23, name: "Frost Gate", cost: 125, color: "#93c5fd", symbol: "🧊", desc: "Freezes projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
-            { id: 24, name: "Ultra Puncher", cost: 375, color: "#9f1239", symbol: "🔥🥊", desc: "Click: 10 Punches", hp: 3000, fireRate: 600, cooldown: 900, currentCooldown: 0 }
+            { id: 24, name: "Ultra Puncher", cost: 375, color: "#9f1239", symbol: "🔥🥊", desc: "Click: 10 Punches", hp: 3000, fireRate: 600, cooldown: 900, currentCooldown: 0 },
+            { id: 25, name: "Cannon Bot", cost: 350, color: "#1e293b", symbol: "💣👆", desc: "Arcing huge bombs", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 },
+            { id: 26, name: "Freeze Cannon", cost: 425, color: "#0ea5e9", symbol: "❄️💣", desc: "Arcing frost bombs (slows)", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1480,6 +1482,80 @@
                     ctx.roundRect((10 + (isPunching && Math.floor(frame/6)%2===1 ? extension : 0))*s, 40*s, 20*s, 20*s, 4*s);
                     ctx.fill();
                 }
+            },
+            // 25: Cannon Bot - A massive mortar-like barrel
+            25: function(ctx, s) {
+                s = s || 1;
+                // Base mount
+                ctx.fillStyle = "#334155";
+                ctx.beginPath();
+                ctx.moveTo(-15*s, 15*s);
+                ctx.lineTo(15*s, 15*s);
+                ctx.lineTo(10*s, 0);
+                ctx.lineTo(-10*s, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                // Cannon barrel pointing upwards and slightly right
+                ctx.save();
+                ctx.rotate(-Math.PI * 0.4); // 72 degrees up (nearly straight up!)
+                ctx.fillStyle = "#0f172a";
+                ctx.fillRect(0, -8*s, 20*s, 16*s);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 2*s;
+                ctx.strokeRect(0, -8*s, 20*s, 16*s);
+                
+                // Cannon opening
+                ctx.fillStyle = "#000";
+                ctx.beginPath();
+                ctx.ellipse(20*s, 0, 4*s, 8*s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Core indicator
+                ctx.fillStyle = "#fbbf24";
+                ctx.beginPath();
+                ctx.arc(-5*s, 5*s, 3*s, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            // 26: Freeze Cannon
+            26: function(ctx, s) {
+                s = s || 1;
+                // Base mount (frosty light blue / cyan theme)
+                ctx.fillStyle = "#0284c7";
+                ctx.beginPath();
+                ctx.moveTo(-15*s, 15*s);
+                ctx.lineTo(15*s, 15*s);
+                ctx.lineTo(10*s, 0);
+                ctx.lineTo(-10*s, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                // Cannon barrel pointing upwards and slightly right (darker frosty cyan)
+                ctx.save();
+                ctx.rotate(-Math.PI * 0.4); // 72 degrees up (nearly straight up!)
+                ctx.fillStyle = "#0c4a6e";
+                ctx.fillRect(0, -8*s, 20*s, 16*s);
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 2*s;
+                ctx.strokeRect(0, -8*s, 20*s, 16*s);
+                
+                // Cannon opening
+                ctx.fillStyle = "#e0f2fe";
+                ctx.beginPath();
+                ctx.ellipse(20*s, 0, 4*s, 8*s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Core indicator (frozen white/blue glow)
+                ctx.fillStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.arc(-5*s, 5*s, 4*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#fff";
+                ctx.beginPath();
+                ctx.arc(-5*s, 5*s, 2*s, 0, Math.PI * 2);
+                ctx.fill();
             }
         };
 
@@ -1786,6 +1862,9 @@
                 this.punchTimer = 0;
                 this.punchCount = 0;
                 
+                this.isCannonBot = card.id === 25;
+                this.isFreezeCannon = card.id === 26;
+
                 this.armed = false; 
 
                 if (this.card.isImitater) {
@@ -2387,6 +2466,25 @@
                     let spawnX = this.x + CELL_SIZE - 15;
                     let spawnY = this.y + CELL_SIZE - 15;
                     energyDrops.push(new Energy(spawnX, spawnY, false));
+                }
+
+                if (this.isCannonBot || this.isFreezeCannon) {
+                    if (Math.floor(prevT / this.card.fireRate) < Math.floor(this.timer / this.card.fireRate)) {
+                        // Target only aliens in the same lane (row)
+                        let target = attackers.find(a => !a.hasBalloon && (this.y >= a.y && this.y < a.y + a.height) && a.x > this.x);
+                        if (target) {
+                            let cx = this.x + CELL_SIZE / 2;
+                            let cy = this.y + CELL_SIZE / 2;
+                            let tx = target.x + target.width / 2;
+                            let ty = target.y + target.height / 2;
+                            let isFreezeProj = this.isFreezeCannon;
+                            let color = isFreezeProj ? "#38bdf8" : "#334155";
+                            let proj = new Projectile(cx, cy, 15, isFreezeProj ? 200 : 400, color, 0, false, isFreezeProj, true, false, true, tx, ty);
+                            proj.isCannon = true; 
+                            projectiles.push(proj);
+                            SoundEngine.shoot();
+                        }
+                    }
                 }
 
                 if (this.isBomb) {
@@ -3480,7 +3578,8 @@
                 // Parabolic arc for manual bombs
                 if (this.isManual) {
                     let progress = Math.min(1, this.lifeTimer / (this.totalFrames || 1));
-                    let arcH = Math.sin(progress * Math.PI) * -200;
+                    let peakHeight = this.isCannon ? -400 : -200; // Colossal arc for Cannon Bot bombs!
+                    let arcH = Math.sin(progress * Math.PI) * peakHeight;
                     
                     // Bomb Shadow
                     ctx.save();
@@ -4253,7 +4352,7 @@
                         targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
                     }
                     
-                    if (targetDef.card.id === 0 || targetDef.card.id === 17 || targetDef.card.id === 22 || targetDef.card.id === 23) { // Instant effect units
+                    if (targetDef.card.id === 0 || targetDef.card.id === 17 || targetDef.card.id === 22 || targetDef.card.id === 23 || targetDef.card.id === 25 || targetDef.card.id === 26) { // Instant effect units
                         if (targetDef.card.id === 0) {
                             energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
                             energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
@@ -4295,6 +4394,20 @@
                                 }
                             });
                             floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "FROST WAVE!", "147, 197, 253"));
+                        }
+
+                        if (targetDef.card.id === 25 || targetDef.card.id === 26) {
+                            let isFreezeProj = targetDef.card.id === 26;
+                            let color = isFreezeProj ? "#38bdf8" : "#334155";
+                            let gridStartY = getGridStartY();
+                            for (let n = 0; n < 20; n++) {
+                                let tx = GRID_START_X + (Math.random() * COLS * CELL_SIZE);
+                                let ty = gridStartY + (Math.floor(Math.random() * activeRows) * CELL_SIZE) + CELL_SIZE/2;
+                                let proj = new Projectile(targetDef.x + CELL_SIZE/2, targetDef.y + CELL_SIZE/2, 15, isFreezeProj ? 200 : 400, color, 0, false, isFreezeProj, true, false, true, tx, ty);
+                                proj.isCannon = true;
+                                projectiles.push(proj);
+                            }
+                            floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, isFreezeProj ? "BLIZZARD!" : "BOMBARD!", isFreezeProj ? "56, 189, 248" : "71, 85, 105"));
                         }
 
                         targetDef.overdrive = false; // Immediately revoke the status for instant effect units
@@ -4619,20 +4732,20 @@
                 if (projectiles[i].x > 0) {
                     for (let d = 0; d < defenders.length; d++) {
                         let def = defenders[d];
-                        // Only check gates in the same row/column
-                        if (projectiles[i].y > def.y && projectiles[i].y < def.y + def.height &&
-                            projectiles[i].x > def.x && projectiles[i].x < def.x + def.width + 15) {
-                            
-                            if (def.isFlameBot && !projectiles[i].isFire) {
-                                projectiles[i].isFire = true;
-                                projectiles[i].isFreeze = false; // Fire melts ice
-                                projectiles[i].color = "#f97316";
-                                projectiles[i].damage = Math.floor(projectiles[i].damage * 1.5);
-                                break;
-                            } else if (def.isFrostGate) {
-                                projectiles[i].isFreeze = true;
-                                projectiles[i].color = "#93c5fd";
-                                break; 
+                        if ((def.isFrostGate || def.isFlameBot) && !projectiles[i].isManual && !projectiles[i].isCannon) {
+                            if (projectiles[i].y >= def.y && projectiles[i].y <= def.y + CELL_SIZE) {
+                                if (projectiles[i].x > def.x && projectiles[i].x < def.x + CELL_SIZE) {
+                                    if (def.isFlameBot) {
+                                        projectiles[i].isFire = true;
+                                        projectiles[i].color = "#f97316";
+                                        projectiles[i].damage = Math.floor(projectiles[i].damage * 1.5);
+                                        break;
+                                    } else if (def.isFrostGate) {
+                                        projectiles[i].isFreeze = true;
+                                        projectiles[i].color = "#93c5fd";
+                                        break; 
+                                    }
+                                }
                             }
                         }
                     }
@@ -4641,7 +4754,7 @@
 
                 if (projectiles[i].isManual && !projectiles[i].active) {
                     // Explode at Target
-                    let radius = projectiles[i].isUltraGrenade ? 3 * CELL_SIZE : 1.5 * CELL_SIZE;
+                    let radius = projectiles[i].isCannon ? 1.5 * CELL_SIZE : (projectiles[i].isUltraGrenade ? 3 * CELL_SIZE : 1.5 * CELL_SIZE);
                     explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
                     for (let a = 0; a < attackers.length; a++) {
                         if (Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
@@ -4970,11 +5083,12 @@
             if (level >= 23) unlockedBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             if (level >= 24) unlockedBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
             if (level >= 31) unlockedBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
+            unlockedBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
                 let tileColor = 'rgba(15, 23, 42, 0.95)';
-                if (bot.id === 14) tileColor = 'rgba(12, 74, 110, 0.95)'; // Freeze Bot (blue)
+                if (bot.id === 14 || bot.id === 26) tileColor = 'rgba(12, 74, 110, 0.95)'; // Freeze Bot & Freeze Cannon (blue)
                 if (bot.id === 15) tileColor = 'rgba(20, 83, 45, 0.95)'; // Chomp Bot (green)
                 
                 html += `
@@ -5003,6 +5117,12 @@
             if (level >= 5) unlockedAliens.push(alienConfigs[10]); 
             if (level >= 7) unlockedAliens.push(alienConfigs[11]); 
             if (level >= 13) unlockedAliens.push(alienConfigs[12]); 
+            if (level >= 15) unlockedAliens.push(alienConfigs[13]); // vanguard
+            if (level >= 18) unlockedAliens.push(alienConfigs[14]); // colossus
+            if (level >= 12) unlockedAliens.push(alienConfigs[15]); // shadow
+            if (level >= 14) unlockedAliens.push(alienConfigs[16]); // hornet
+            if (level >= 20) unlockedAliens.push(alienConfigs[17]); // behemoth
+            if (level >= 5) unlockedAliens.push(alienConfigs[18]); // polevaulter
             
             unlockedAliens.forEach(alien => {
                 let displayType = alien.type.charAt(0).toUpperCase() + alien.type.slice(1);
@@ -5060,6 +5180,24 @@
                 } else if (alien.type === 'balloon') {
                     desc = "Aerial threat. Immune to most damage while floating. Pop its balloon with ice or spikes!";
                     svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><ellipse cx="30" cy="45" rx="15" ry="12" fill="#020617" stroke="${alien.color}" stroke-width="3"/><circle cx="30" cy="20" r="18" fill="#fb7185" stroke="#fff" stroke-width="2"/><line x1="30" y1="38" x2="30" y2="28" stroke="#fff" stroke-width="1"/><g transform="translate(4, 16) scale(0.85)">${faceSVG}</g></svg>`;
+                } else if (alien.type === 'vanguard') {
+                    desc = "Aggressive armored vanguard unit. Moves quickly with plated shields.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="30,5 50,20 50,50 30,60 10,50 10,20" fill="#020617" stroke="${alien.color}" stroke-width="4"/><line x1="30" y1="15" x2="30" y2="50" stroke="${alien.color}" stroke-width="3"/>${faceSVG}</svg>`;
+                } else if (alien.type === 'colossus') {
+                    desc = "Relentlessly slow giant of steel. Possesses immense health.";
+                    svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><rect x="5" y="5" width="70" height="70" rx="10" fill="#020617" stroke="${alien.color}" stroke-width="4"/><circle cx="40" cy="40" r="12" fill="${alien.color}"/><g transform="translate(10, 10)">${faceSVG}</g></svg>`;
+                } else if (alien.type === 'shadow') {
+                    desc = "Eerie, high-speed shadow phantom. Tricky to track and hit.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><ellipse cx="30" cy="30" rx="20" ry="25" fill="#020617" stroke="${alien.color}" stroke-width="4"/><ellipse cx="30" cy="30" rx="12" ry="17" fill="none" stroke="${alien.color}" stroke-dasharray="3,3" stroke-width="2"/>${faceSVG}</svg>`;
+                } else if (alien.type === 'hornet') {
+                    desc = "Super-fast flying harasser. Quickly breaches direct defense lines.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><polygon points="10,30 30,15 50,30 30,45" fill="#020617" stroke="${alien.color}" stroke-width="4"/><line x1="25" y1="20" x2="25" y2="40" stroke="#000" stroke-width="2"/><line x1="35" y1="20" x2="35" y2="40" stroke="#000" stroke-width="2"/>${faceSVG}</svg>`;
+                } else if (alien.type === 'behemoth') {
+                    desc = "Colossal walking fortress with catastrophic damage and life capacity.";
+                    svgIcon = `<svg viewBox="0 0 80 80" style="filter: drop-shadow(0 0 8px ${alien.color});"><rect x="5" y="5" width="70" height="70" rx="15" fill="#020617" stroke="${alien.color}" stroke-width="4"/><circle cx="25" cy="30" r="5" fill="#ef4444"/><circle cx="55" cy="30" r="5" fill="#ef4444"/></svg>`;
+                } else if (alien.type === 'polevaulter') {
+                    desc = "Athletic jumper that uses a pole to vault over the first block in its path.";
+                    svgIcon = `<svg viewBox="0 0 60 60" style="filter: drop-shadow(0 0 8px ${alien.color});"><ellipse cx="30" cy="30" rx="18" ry="25" fill="#020617" stroke="${alien.color}" stroke-width="4"/><line x1="18" y1="25" x2="42" y2="25" stroke="#fff" stroke-width="2"/><line x1="18" y1="35" x2="42" y2="35" stroke="#fff" stroke-width="2"/>${faceSVG}</svg>`;
                 }
                 
                 html += `
@@ -5396,6 +5534,8 @@
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
             if (level >= 31) pickableBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
+            pickableBots.push(cardTypes.find(c => c.id === 25)); // Cannon Bot (Available in endgame)
+            pickableBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
@@ -5408,7 +5548,7 @@
                     
                     if (bot) {
                         let tileColor = '#1e293b';
-                        if (bot.id === 14) tileColor = '#082f49';
+                        if (bot.id === 14 || bot.id === 26) tileColor = '#082f49'; // Frost units (dark blue)
                         if (bot.id === 15) tileColor = '#14532d';
 
                         slotDiv.style.border = `2px solid ${bot.color}`;
@@ -5457,7 +5597,7 @@
                 cardDiv.className = 'loadout-card' + (isSelected ? ' selected' : ' hoverable');
                 
                 let tileColor = '#1e293b';
-                if (bot.id === 14) tileColor = '#082f49';
+                if (bot.id === 14 || bot.id === 26) tileColor = '#082f49'; // Frost units (dark blue)
                 if (bot.id === 15) tileColor = '#14532d';
 
                 cardDiv.style.border = `2px solid ${bot.color}`;
