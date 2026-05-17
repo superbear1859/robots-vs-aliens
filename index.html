@@ -2026,7 +2026,7 @@
                     
                     if (dist <= radiusMultiplier * CELL_SIZE) {
                         if (attackers[i].hasBalloon) {
-                            if (level >= 25 && level <= 31) {
+                            if ((level >= 25 && level <= 31) || level === 35) {
                                 attackers[i].hasBalloon = false;
                                 floatingTexts.push(new FloatingText(attackers[i].x, attackers[i].y - 40, "POP!", "251, 113, 133"));
                             }
@@ -4662,7 +4662,7 @@
                             SoundEngine.drill(); 
                         }
                     } else if (selectedCardType === 8) { // Mega Spike Upgrade interaction
-                        if ((level >= 25 && level <= 31) || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 7)) {
+                        if ((level >= 25 && level <= 31) || level === 35 || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 7)) {
                             if ((energy >= card.cost || (level >= 25 && level <= 31)) && card.currentCooldown <= 0) {
                                 if (defenderIndex !== -1) defenders.splice(defenderIndex, 1);
                                 defenders.push(new Defender(gridX, gridY, card));
@@ -4674,7 +4674,7 @@
                             selectedCardType = null;
                         }
                     } else if (selectedCardType === 11) { // Mega Shield Upgrade interaction
-                        if ((level >= 25 && level <= 31) || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 2)) { 
+                        if ((level >= 25 && level <= 31) || level === 35 || (defenderIndex !== -1 && defenders[defenderIndex].card.id === 2)) { 
                             if ((energy >= card.cost || (level >= 25 && level <= 31)) && card.currentCooldown <= 0) {
                                 if (defenderIndex !== -1) defenders.splice(defenderIndex, 1);
                                 defenders.push(new Defender(gridX, gridY, card));
@@ -4715,7 +4715,17 @@
                             }
                         }
                         
-                        if (!merged) selectedCardType = null;
+                        if (!merged) {
+                            if (level === 35 && card.currentCooldown <= 0 && defenderIndex === -1) {
+                                let ultraPuncher = new Defender(gridX, gridY, card);
+                                ultraPuncher.height = CELL_SIZE * 2; // Spans 2 rows!
+                                defenders.push(ultraPuncher);
+                                completePlacement(card);
+                                merged = true;
+                            } else {
+                                selectedCardType = null;
+                            }
+                        }
                     } else if (selectedCardType === 22) { // Ultra Grenade interaction
                         let merged = false;
                         let clickedBot = defenders.find(d => d.x === gridX && d.y === gridY && d.card.id === 19);
@@ -4744,7 +4754,7 @@
                         }
                         
                         if (!merged) {
-                            if ((level >= 25 && level <= 31) && card.currentCooldown <= 0 && defenderIndex === -1) {
+                            if (((level >= 25 && level <= 31) || level === 35) && card.currentCooldown <= 0 && defenderIndex === -1) {
                                 defenders.push(new Defender(gridX, gridY, card));
                                 completePlacement(card);
                             } else {
@@ -4887,7 +4897,7 @@
                     for (let a = 0; a < attackers.length; a++) {
                         if (Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
                             if (attackers[a].hasBalloon) {
-                                if (projectiles[i].isFreeze || (level >= 25 && level <= 31)) {
+                                if (projectiles[i].isFreeze || (level >= 25 && level <= 31) || level === 35) {
                                     attackers[a].hasBalloon = false;
                                     floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
                                 }
@@ -4918,7 +4928,7 @@
                         }
 
                         if (attackers[j].hasBalloon) {
-                            if (projectiles[i].isFreeze || (level >= 25 && level <= 31)) {
+                            if (projectiles[i].isFreeze || (level >= 25 && level <= 31) || level === 35) {
                                 attackers[j].hasBalloon = false;
                                 SoundEngine.energy(); // Temporary pop sound
                                 floatingTexts.push(new FloatingText(attackers[j].x, attackers[j].y - 40, "POP!", "251, 113, 133"));
@@ -4948,7 +4958,7 @@
                             for (let a = 0; a < attackers.length; a++) {
                                 if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
                                     if (attackers[a].hasBalloon) {
-                                        if (projectiles[i].isFreeze || (level >= 25 && level <= 31)) {
+                                        if (projectiles[i].isFreeze || (level >= 25 && level <= 31) || level === 35) {
                                             attackers[a].hasBalloon = false;
                                             floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
                                         }
@@ -4966,7 +4976,25 @@
                             if (attackers[j].health <= 0) {
                                 projHit = false; // Killed the alien! Pierce through!
                             } else {
-                                projHit = true; // Alien survived. Bullet stops.
+                                if (projectiles[i].isHoming) {
+                                    // Big homing overdrive missile explodes on tough targets!
+                                    let radius = 2.5 * CELL_SIZE; // Large explosion radius
+                                    explosions.push(new Explosion(projectiles[i].x, projectiles[i].y, radius));
+                                    for (let a = 0; a < attackers.length; a++) {
+                                        if (attackers[a] !== attackers[j] && Math.hypot(attackers[a].x - projectiles[i].x, attackers[a].y - projectiles[i].y) <= radius) {
+                                            if (attackers[a].hasBalloon) {
+                                                if (projectiles[i].isFreeze || (level >= 25 && level <= 31) || level === 35) {
+                                                    attackers[a].hasBalloon = false;
+                                                    floatingTexts.push(new FloatingText(attackers[a].x, attackers[a].y - 40, "POP!", "251, 113, 133"));
+                                                }
+                                                continue;
+                                            }
+                                            attackers[a].health -= projectiles[i].damage; // Deal full missile damage to neighbors
+                                        }
+                                    }
+                                    SoundEngine.explosion();
+                                }
+                                projHit = true; // Alien survived or detonated. Bullet stops.
                             }
                         } else if (!projectiles[i].isLaser) {
                             projHit = true;
@@ -5520,7 +5548,7 @@
 
             frame = 0;
             wave = 1;
-            energy = level === 1 ? 150 : 50;
+            energy = level === 1 ? 150 : (level === 35 ? 125 : 50);
             gameOver = false;
             selectedCardType = null;
 
@@ -5558,6 +5586,39 @@
             startScreen.classList.add('hidden');
             levelCompleteScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
+
+            if (level === 35) {
+                // Double Battery Bot (ID 28) must always be in the selection!
+                const doubleBattery = cardTypes.find(c => c.id === 28);
+                
+                // Get all other active bots (excluding Dig Tool ID 6 and Double Battery ID 28)
+                let pool = cardTypes.filter(c => c.id !== 6 && c.id !== 28);
+                
+                // Shuffle randomly
+                let shuffled = [...pool].sort(() => Math.random() - 0.5);
+                
+                // Take maxSlots - 1 random bots
+                let selected = shuffled.slice(0, maxSlots - 1);
+                
+                // Insert Double Battery as the first selection
+                selected.unshift(doubleBattery);
+                
+                // Assign to currentLoadout
+                currentLoadout = selected.map(b => b.id);
+                
+                // If Imitater (ID 21) is selected, prompt selection modal first
+                if (currentLoadout.includes(21)) {
+                    let options = cardTypes.filter(c => c.id !== 6 && c.id !== 21);
+                    openImitaterSelection(options);
+                    return;
+                }
+                
+                initLevel();
+                SoundEngine.startBGM(level);
+                gameRunning = true;
+                animate();
+                return;
+            }
 
             let pickableBots = [];
             if (level >= 1) pickableBots.push(cardTypes.find(c => c.id === 1)); 
@@ -5865,12 +5926,21 @@
                         }
                     }
                     modal.classList.add('hidden');
-                    renderLoadout();
+                    if (level === 35) {
+                        initLevel();
+                        SoundEngine.startBGM(level);
+                        gameRunning = true;
+                        animate();
+                    } else {
+                        renderLoadout();
+                    }
                 };
                 container.appendChild(cardDiv);
             });
 
-            document.getElementById('cancelImitaterBtn').onclick = () => modal.classList.add('hidden');
+            const cancelBtn = document.getElementById('cancelImitaterBtn');
+            cancelBtn.style.display = level === 35 ? 'none' : 'block';
+            cancelBtn.onclick = () => modal.classList.add('hidden');
             modal.classList.remove('hidden');
         }
 
