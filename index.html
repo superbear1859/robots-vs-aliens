@@ -781,7 +781,9 @@
             { id: 23, name: "Frost Gate", cost: 125, color: "#93c5fd", symbol: "🧊", desc: "Freezes projectiles", hp: 300, fireRate: 0, cooldown: 600, currentCooldown: 0 },
             { id: 24, name: "Ultra Puncher", cost: 375, color: "#9f1239", symbol: "🔥🥊", desc: "Click: 10 Punches", hp: 3000, fireRate: 600, cooldown: 900, currentCooldown: 0 },
             { id: 25, name: "Cannon Bot", cost: 350, color: "#1e293b", symbol: "💣👆", desc: "Arcing huge bombs", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 },
-            { id: 26, name: "Freeze Cannon", cost: 425, color: "#0ea5e9", symbol: "❄️💣", desc: "Arcing frost bombs (slows)", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 }
+            { id: 26, name: "Freeze Cannon", cost: 425, color: "#0ea5e9", symbol: "❄️💣", desc: "Arcing frost bombs (slows)", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 },
+            { id: 27, name: "Ultra Bomb", cost: 225, color: "#f43f5e", symbol: "💥", desc: "Huge 5x5 Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 },
+            { id: 28, name: "Double Battery", cost: 100, color: "#eab308", symbol: "⚡⚡", desc: "Generates Double Energy", hp: 150, fireRate: 0, cooldown: 450, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -965,6 +967,113 @@
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText("!", 0, 3*s);
+            },
+            // 27: Ultra Bomb - Massive glowing bomb with burning fuse
+            27: function(ctx, s) {
+                s = s || 1;
+                ctx.fillStyle = "#0c0a09";
+                ctx.beginPath();
+                ctx.arc(0, 2*s, 15*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#f43f5e";
+                ctx.lineWidth = 3*s;
+                ctx.stroke();
+                
+                // Inner glowing energy ring
+                ctx.strokeStyle = "#fbbf24";
+                ctx.lineWidth = 1.5*s;
+                ctx.beginPath();
+                ctx.arc(0, 2*s, 10*s, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Burning fuse
+                ctx.strokeStyle = "#f97316";
+                ctx.lineWidth = 2.5*s;
+                ctx.beginPath();
+                ctx.moveTo(8*s, -10*s);
+                ctx.quadraticCurveTo(16*s, -20*s, 10*s, -24*s);
+                ctx.stroke();
+                
+                // Spark particles
+                ctx.fillStyle = "#f59e0b";
+                ctx.beginPath();
+                ctx.arc(10*s, -24*s, 5*s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#fff";
+                ctx.beginPath();
+                ctx.arc(10*s, -24*s, 2*s, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glowing text
+                ctx.fillStyle = "#f43f5e";
+                ctx.font = `bold ${14*s}px Orbitron`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("💥", 0, 3*s);
+            },
+            // 28: Double Battery Bot - Two batteries side-by-side joined by a glowing gold conduit
+            28: function(ctx, s) {
+                s = s || 1;
+                // Joined golden conduit base
+                ctx.fillStyle = "#d97706";
+                ctx.fillRect(-12*s, -2*s, 24*s, 6*s);
+                ctx.strokeStyle = "#fbbf24";
+                ctx.lineWidth = 1*s;
+                ctx.strokeRect(-12*s, -2*s, 24*s, 6*s);
+                
+                // Left battery
+                ctx.save();
+                ctx.translate(-7*s, 0);
+                ctx.fillStyle = "#1c1917";
+                ctx.beginPath();
+                ctx.roundRect(-8*s, -11*s, 16*s, 22*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#facc15";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.roundRect(-3*s, -14*s, 6*s, 5*s, 1*s);
+                ctx.fill();
+                // Bolt symbol
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.moveTo(2*s, -5*s);
+                ctx.lineTo(-2*s, 1*s);
+                ctx.lineTo(1*s, 1*s);
+                ctx.lineTo(-2*s, 7*s);
+                ctx.lineTo(2*s, 0);
+                ctx.lineTo(-1*s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                // Right battery
+                ctx.save();
+                ctx.translate(7*s, 0);
+                ctx.fillStyle = "#1c1917";
+                ctx.beginPath();
+                ctx.roundRect(-8*s, -11*s, 16*s, 22*s, 3*s);
+                ctx.fill();
+                ctx.strokeStyle = "#facc15";
+                ctx.lineWidth = 2*s;
+                ctx.stroke();
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.roundRect(-3*s, -14*s, 6*s, 5*s, 1*s);
+                ctx.fill();
+                // Bolt symbol
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.moveTo(2*s, -5*s);
+                ctx.lineTo(-2*s, 1*s);
+                ctx.lineTo(1*s, 1*s);
+                ctx.lineTo(-2*s, 7*s);
+                ctx.lineTo(2*s, 0);
+                ctx.lineTo(-1*s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
             },
             // 5: Mine Bot - Disc with trigger prongs
             5: function(ctx, s) {
@@ -1834,6 +1943,7 @@
                 this.isFreezeShooter = card.id === 14;
                 this.multiCount = 1; // Starts at 1 for Multi Bot
                 this.isGenerator = card.id === 0;
+                this.isDoubleGenerator = card.id === 28;
                 this.isBomb = card.id === 4;
                 this.isMine = card.id === 5;
                 this.isSpike = card.id === 7 || card.id === 8; 
@@ -1864,6 +1974,7 @@
                 
                 this.isCannonBot = card.id === 25;
                 this.isFreezeCannon = card.id === 26;
+                this.isUltraBomb = card.id === 27;
 
                 this.armed = false; 
 
@@ -1898,6 +2009,7 @@
                 let cy = this.y + CELL_SIZE / 2;
                 
                 explosions.push(new Explosion(cx, cy, radiusMultiplier * CELL_SIZE));
+                let dmg = this.isUltraBomb ? 5000 : 2000;
                 
                 for (let i = 0; i < attackers.length; i++) {
                     let ax = attackers[i].x + CELL_SIZE / 2;
@@ -1920,7 +2032,7 @@
                             }
                             continue; // Balloon is in the air, ground explosions miss otherwise
                         }
-                        attackers[i].health -= 2000; 
+                        attackers[i].health -= dmg; 
                     }
                 }
             }
@@ -2048,8 +2160,8 @@
                     return;
                 }
 
-                if (this.isBomb) {
-                    let scale = 1 + (this.timer / 45) * 0.15;
+                if (this.isBomb || this.isUltraBomb) {
+                    let scale = 1 + (this.timer / 45) * 0.25;
                     ctx.translate(cx, cy);
                     ctx.scale(scale, scale);
                     ctx.translate(-cx, -cy);
@@ -2076,7 +2188,7 @@
                 }
                 
                 // --- NEW BATTERY BOT SURGE/FLASH EFFECT ---
-                if (this.isGenerator) {
+                if (this.isGenerator || this.isDoubleGenerator) {
                     let timeToGenerate = 400 - (this.timer % 400);
                     if (timeToGenerate < 60) { 
                         ctx.globalAlpha = 0.5 + Math.abs(Math.sin(frame * 0.4)) * 0.5;
@@ -2086,7 +2198,7 @@
                 }
 
                 // If Freeze Bot, use a deep frosty blue background. If Chomp bot, use dark green.
-                let normBgCol = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : "#1e293b"); 
+                let normBgCol = this.card.id === 14 ? "#082f49" : (this.card.id === 15 ? "#14532d" : ((this.card.id === 0 || this.card.id === 28) ? "#422006" : "#1e293b")); 
                 let normBorderCol = this.card.color;
                 
                 let isBigDoubleNorm = (this.card.id === 9 || this.card.id === 13) && this.overdrive && this.overdriveTimer <= 61;
@@ -2461,11 +2573,14 @@
                     }
                 }
 
-                if (this.isGenerator && Math.floor(prevT / 400) < Math.floor(this.timer / 400)) {
+                if ((this.isGenerator || this.isDoubleGenerator) && Math.floor(prevT / 400) < Math.floor(this.timer / 400)) {
                     // Spawn the energy battery in the bottom-right corner of the bot
                     let spawnX = this.x + CELL_SIZE - 15;
                     let spawnY = this.y + CELL_SIZE - 15;
                     energyDrops.push(new Energy(spawnX, spawnY, false));
+                    if (this.isDoubleGenerator) {
+                        energyDrops.push(new Energy(this.x + 15, spawnY, false));
+                    }
                 }
 
                 if (this.isCannonBot || this.isFreezeCannon) {
@@ -2487,9 +2602,9 @@
                     }
                 }
 
-                if (this.isBomb) {
+                if (this.isBomb || this.isUltraBomb) {
                     if (this.timer >= 45) { 
-                        this.explode(1.6); 
+                        this.explode(this.isUltraBomb ? 2.5 : 1.6); 
                         this.health = 0; 
                     }
                 }
@@ -4352,11 +4467,17 @@
                         targetDef.overdriveTimer = 1200; // 20 seconds at 60fps
                     }
                     
-                    if (targetDef.card.id === 0 || targetDef.card.id === 17 || targetDef.card.id === 22 || targetDef.card.id === 23 || targetDef.card.id === 25 || targetDef.card.id === 26) { // Instant effect units
-                        if (targetDef.card.id === 0) {
+                    if (targetDef.card.id === 0 || targetDef.card.id === 4 || targetDef.card.id === 17 || targetDef.card.id === 22 || targetDef.card.id === 23 || targetDef.card.id === 25 || targetDef.card.id === 26 || targetDef.card.id === 27 || targetDef.card.id === 28) { // Instant effect units
+                        if (targetDef.card.id === 0 || targetDef.card.id === 28) {
+                            let isDouble = targetDef.card.id === 28;
                             energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Right
                             energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Left
                             energyDrops.push(new Energy(targetDef.x + CELL_SIZE - 15, targetDef.y + 15, false)); // Top-Right
+                            if (isDouble) {
+                                energyDrops.push(new Energy(targetDef.x + 15, targetDef.y + 15, false)); // Top-Left
+                                energyDrops.push(new Energy(targetDef.x + CELL_SIZE/2, targetDef.y + 15, false)); // Top-Center
+                                energyDrops.push(new Energy(targetDef.x + CELL_SIZE/2, targetDef.y + CELL_SIZE - 15, false)); // Bottom-Center
+                            }
                         }
                         
                         if (targetDef.card.id === 17) { // Flame Bot overdrive: Board-wide fire conversion
@@ -4408,6 +4529,13 @@
                                 projectiles.push(proj);
                             }
                             floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, isFreezeProj ? "BLIZZARD!" : "BOMBARD!", isFreezeProj ? "56, 189, 248" : "71, 85, 105"));
+                        }
+
+                        if (targetDef.card.id === 4 || targetDef.card.id === 27) {
+                            let isUltra = targetDef.card.id === 27;
+                            targetDef.explode(isUltra ? 4.5 : 3.0); // MASSIVE instant overdrive explosion!
+                            targetDef.health = 0;
+                            floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "BIG BANG!", "239, 68, 68"));
                         }
 
                         targetDef.overdrive = false; // Immediately revoke the status for instant effect units
@@ -5084,12 +5212,16 @@
             if (level >= 24) unlockedBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
             if (level >= 31) unlockedBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
             unlockedBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
+            unlockedBots.push(cardTypes.find(c => c.id === 27)); // Ultra Bomb (Available in endgame)
+            if (level >= 27) unlockedBots.push(cardTypes.find(c => c.id === 28)); // Double Battery (Unlocked at Level 27)
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
                 let tileColor = 'rgba(15, 23, 42, 0.95)';
                 if (bot.id === 14 || bot.id === 26) tileColor = 'rgba(12, 74, 110, 0.95)'; // Freeze Bot & Freeze Cannon (blue)
                 if (bot.id === 15) tileColor = 'rgba(20, 83, 45, 0.95)'; // Chomp Bot (green)
+                if (bot.id === 4 || bot.id === 27) tileColor = 'rgba(127, 29, 29, 0.95)'; // Red bomb theme
+                if (bot.id === 0 || bot.id === 28) tileColor = 'rgba(113, 63, 18, 0.95)'; // Yellow energy theme
                 
                 html += `
                     <div class="manual-card" style="border-color: ${bot.color}; background: ${tileColor};">
@@ -5536,6 +5668,8 @@
             if (level >= 31) pickableBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
             pickableBots.push(cardTypes.find(c => c.id === 25)); // Cannon Bot (Available in endgame)
             pickableBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
+            pickableBots.push(cardTypes.find(c => c.id === 27)); // Ultra Bomb (Available in endgame)
+            if (level >= 27) pickableBots.push(cardTypes.find(c => c.id === 28)); // Double Battery (Unlocked at Level 27)
 
             // Render top slots dynamically based on maxSlots
             for(let i = 0; i < maxSlots; i++) {
@@ -5550,6 +5684,8 @@
                         let tileColor = '#1e293b';
                         if (bot.id === 14 || bot.id === 26) tileColor = '#082f49'; // Frost units (dark blue)
                         if (bot.id === 15) tileColor = '#14532d';
+                        if (bot.id === 4 || bot.id === 27) tileColor = '#450a0a'; // Bomb units (dark red)
+                        if (bot.id === 0 || bot.id === 28) tileColor = '#422006'; // Battery units (dark amber)
 
                         slotDiv.style.border = `2px solid ${bot.color}`;
                         slotDiv.style.background = tileColor;
@@ -5599,6 +5735,8 @@
                 let tileColor = '#1e293b';
                 if (bot.id === 14 || bot.id === 26) tileColor = '#082f49'; // Frost units (dark blue)
                 if (bot.id === 15) tileColor = '#14532d';
+                if (bot.id === 4 || bot.id === 27) tileColor = '#450a0a'; // Bomb units (dark red)
+                if (bot.id === 0 || bot.id === 28) tileColor = '#422006'; // Battery units (dark amber)
 
                 cardDiv.style.border = `2px solid ${bot.color}`;
                 cardDiv.style.background = tileColor;
