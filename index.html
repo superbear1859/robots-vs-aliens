@@ -783,7 +783,8 @@
             { id: 25, name: "Cannon Bot", cost: 350, color: "#1e293b", symbol: "💣👆", desc: "Arcing huge bombs", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 },
             { id: 26, name: "Freeze Cannon", cost: 425, color: "#0ea5e9", symbol: "❄️💣", desc: "Arcing frost bombs (slows)", hp: 150, fireRate: 300, cooldown: 900, currentCooldown: 0 },
             { id: 27, name: "Ultra Bomb", cost: 225, color: "#f43f5e", symbol: "💥", desc: "Huge 5x5 Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 },
-            { id: 28, name: "Double Battery", cost: 100, color: "#eab308", symbol: "⚡⚡", desc: "Generates Double Energy", hp: 150, fireRate: 0, cooldown: 450, currentCooldown: 0 }
+            { id: 28, name: "Double Battery", cost: 100, color: "#eab308", symbol: "⚡⚡", desc: "Generates Double Energy", hp: 150, fireRate: 0, cooldown: 450, currentCooldown: 0 },
+            { id: 29, name: "Mech Bomb", cost: 250, color: "#38bdf8", symbol: "🦾💥", desc: "Click: 5x5 Area Explosion", hp: 100, fireRate: 0, cooldown: 900, currentCooldown: 0 }
         ];
 
         const alienConfigs = [
@@ -1074,6 +1075,58 @@
                 ctx.closePath();
                 ctx.fill();
                 ctx.restore();
+            },
+            // 29: Mech Bomb - Cybernetic armor plates, gold core, neon blue glowing components
+            29: function(ctx, s) {
+                s = s || 1;
+                // Outer mechanical shell (square with clipped corners)
+                ctx.fillStyle = "#1e293b";
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 3*s;
+                ctx.beginPath();
+                ctx.moveTo(-15*s, -10*s);
+                ctx.lineTo(-10*s, -15*s);
+                ctx.lineTo(10*s, -15*s);
+                ctx.lineTo(15*s, -10*s);
+                ctx.lineTo(15*s, 10*s);
+                ctx.lineTo(10*s, 15*s);
+                ctx.lineTo(-10*s, 15*s);
+                ctx.lineTo(-15*s, 10*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Corner rivets
+                ctx.fillStyle = "#64748b";
+                ctx.beginPath();
+                ctx.arc(-8*s, -8*s, 1.5*s, 0, Math.PI * 2);
+                ctx.arc(8*s, -8*s, 1.5*s, 0, Math.PI * 2);
+                ctx.arc(-8*s, 8*s, 1.5*s, 0, Math.PI * 2);
+                ctx.arc(8*s, 8*s, 1.5*s, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Cybernetic Core Ring
+                ctx.strokeStyle = "#0ea5e9";
+                ctx.lineWidth = 2*s;
+                ctx.beginPath();
+                ctx.arc(0, 0, 8*s, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Center glowing power light
+                ctx.fillStyle = "#eab308";
+                ctx.beginPath();
+                ctx.arc(0, 0, 4*s, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glowing blue side vents
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 1.5*s;
+                ctx.beginPath();
+                ctx.moveTo(-12*s, -3*s);
+                ctx.lineTo(-12*s, 3*s);
+                ctx.moveTo(12*s, -3*s);
+                ctx.lineTo(12*s, 3*s);
+                ctx.stroke();
             },
             // 5: Mine Bot - Disc with trigger prongs
             5: function(ctx, s) {
@@ -1975,6 +2028,7 @@
                 this.isCannonBot = card.id === 25;
                 this.isFreezeCannon = card.id === 26;
                 this.isUltraBomb = card.id === 27;
+                this.isMechBomb = card.id === 29;
 
                 this.armed = false; 
 
@@ -2009,7 +2063,7 @@
                 let cy = this.y + CELL_SIZE / 2;
                 
                 explosions.push(new Explosion(cx, cy, radiusMultiplier * CELL_SIZE));
-                let dmg = this.isUltraBomb ? 5000 : 2000;
+                let dmg = (this.isUltraBomb || this.isMechBomb) ? 5000 : 2000;
                 
                 for (let i = 0; i < attackers.length; i++) {
                     let ax = attackers[i].x + CELL_SIZE / 2;
@@ -2164,6 +2218,11 @@
                     let scale = 1 + (this.timer / 45) * 0.25;
                     ctx.translate(cx, cy);
                     ctx.scale(scale, scale);
+                    ctx.translate(-cx, -cy);
+                } else if (this.isMechBomb) {
+                    let pulse = 1 + Math.sin(frame * 0.1) * 0.05;
+                    ctx.translate(cx, cy);
+                    ctx.scale(pulse, pulse);
                     ctx.translate(-cx, -cy);
                 } else if (this.isSquash && this.squashState === 'jumping') {
                     ctx.translate(cx, cy);
@@ -2606,6 +2665,19 @@
                     if (this.timer >= 45) { 
                         this.explode(this.isUltraBomb ? 2.5 : 1.6); 
                         this.health = 0; 
+                    }
+                }
+
+                if (this.isMechBomb) {
+                    if (this.overdrive) {
+                        // Explode 10 times in rapid succession (every 6 frames)
+                        if (this.overdriveTimer % 6 === 0 && this.overdriveTimer > 0) {
+                            this.explode(2.5); // 5x5 explosion
+                            floatingTexts.push(new FloatingText(this.x + CELL_SIZE/2 + (Math.random()*40 - 20), this.y + (Math.random()*40 - 20), "MECH BOOM!", "56, 189, 248"));
+                        }
+                        if (this.overdriveTimer <= 1) {
+                            this.health = 0; // Destroy the bomb at the end of overdrive
+                        }
                     }
                 }
 
@@ -4160,6 +4232,16 @@
                         <circle cx="3" cy="-1" r="1.5" fill="#000"/>
                         <path d="M-2 4 Q0 6 2 4" stroke="#000" fill="none" stroke-width="1"/>
                     `);
+                case 29: // Mech Bomb
+                    return wrap(`
+                        <rect x="-11" y="-11" width="22" height="22" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                        <circle cx="0" cy="0" r="7" fill="#1e293b" stroke="#0ea5e9" stroke-width="1.5"/>
+                        <circle cx="0" cy="0" r="3" fill="#facc15"/>
+                        <line x1="-7" y1="-7" x2="-3" y2="-3" stroke="#38bdf8" stroke-width="1.5"/>
+                        <line x1="7" y1="-7" x2="3" y2="-3" stroke="#38bdf8" stroke-width="1.5"/>
+                        <line x1="-7" y1="7" x2="-3" y2="3" stroke="#38bdf8" stroke-width="1.5"/>
+                        <line x1="7" y1="7" x2="3" y2="3" stroke="#38bdf8" stroke-width="1.5"/>
+                    `);
                 default:
                     return wrap(`<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="20">${bot.symbol}</text>`);
             }
@@ -4423,15 +4505,24 @@
                     manualTargetUnit = null;
                     mouse.clicked = false;
                 } else {
-                    // Check for Ultra Puncher click
-                    let clickedPuncher = defenders.find(d => d.card.id === 24 && d.currentManualCooldown <= 0 &&
-                        mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + d.height);
-                    if (clickedPuncher) {
-                        clickedPuncher.punchingFrames = 60; // 10 punches
-                        clickedPuncher.currentManualCooldown = clickedPuncher.card.fireRate;
+                    // Check for Mech Bomb click
+                    let clickedMechBomb = defenders.find(d => d.card.id === 29 &&
+                        mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
+                    if (clickedMechBomb) {
+                        clickedMechBomb.explode(2.5); // 5x5 explosion
+                        clickedMechBomb.health = 0; // Destroy the bomb
+                        floatingTexts.push(new FloatingText(clickedMechBomb.x + CELL_SIZE/2, clickedMechBomb.y, "MECH DETONATION!", "56, 189, 248"));
                         mouse.clicked = false;
-                        SoundEngine.drill();
                     } else {
+                        // Check for Ultra Puncher click
+                        let clickedPuncher = defenders.find(d => d.card.id === 24 && d.currentManualCooldown <= 0 &&
+                            mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + d.height);
+                        if (clickedPuncher) {
+                            clickedPuncher.punchingFrames = 60; // 10 punches
+                            clickedPuncher.currentManualCooldown = clickedPuncher.card.fireRate;
+                            mouse.clicked = false;
+                            SoundEngine.drill();
+                        } else {
                         // Try selecting a ready manual unit
                         let clickedManual = defenders.find(d => d.isUltraGrenade && d.currentManualCooldown <= 0 && 
                             mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
@@ -4442,12 +4533,13 @@
                         }
                     }
                 }
-            } else if (mouse.clicked && usingUltra && inGrid) {
+            }
+        } else if (mouse.clicked && usingUltra && inGrid) {
                 let targetDef = defenders.find(d => mouse.x > d.x && mouse.x < d.x + CELL_SIZE && mouse.y > d.y && mouse.y < d.y + CELL_SIZE);
                 if (targetDef && !targetDef.overdrive) {
                     targetDef.overdrive = true;
-                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14 || targetDef.card.id === 16 || targetDef.card.id === 19 || targetDef.card.id === 20) {
-                        targetDef.overdriveTimer = 60; // 1 second burst
+                    if (targetDef.card.id === 1 || targetDef.card.id === 10 || targetDef.card.id === 14 || targetDef.card.id === 16 || targetDef.card.id === 19 || targetDef.card.id === 20 || targetDef.card.id === 29) {
+                        targetDef.overdriveTimer = 60; // 1 second burst (Mech Bomb triggers 10 explosions)
                     } else if (targetDef.card.id === 3) {
                         targetDef.overdriveTimer = 120; // 2 seconds burst
                     } else if (targetDef.card.id === 9) {
@@ -4531,8 +4623,8 @@
                             floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, isFreezeProj ? "BLIZZARD!" : "BOMBARD!", isFreezeProj ? "56, 189, 248" : "71, 85, 105"));
                         }
 
-                        if (targetDef.card.id === 4 || targetDef.card.id === 27) {
-                            let isUltra = targetDef.card.id === 27;
+                        if (targetDef.card.id === 4 || targetDef.card.id === 27 || targetDef.card.id === 29) {
+                            let isUltra = targetDef.card.id === 27 || targetDef.card.id === 29;
                             targetDef.explode(isUltra ? 4.5 : 3.0); // MASSIVE instant overdrive explosion!
                             targetDef.health = 0;
                             floatingTexts.push(new FloatingText(targetDef.x + CELL_SIZE/2, targetDef.y, "BIG BANG!", "239, 68, 68"));
@@ -4606,10 +4698,10 @@
             
             if (level === 25 || level === 26) {
                 // Classic Mix (Battery Bot removed)
-                pool = [1, 2, 4, 5, 7, 12, 15, 20];
+                pool = [1, 2, 4, 5, 7, 12, 15, 20, 29];
             } else if (level === 27 || level === 28) {
                 // Heavy Explosives
-                pool = [4, 7, 8, 12, 17, 19, 20, 22]; 
+                pool = [4, 7, 8, 12, 17, 19, 20, 22, 29]; 
                 spawnRate = 330; 
             } else if (level === 29 || level === 30) {
                 // Laser Storm
@@ -4617,7 +4709,7 @@
                 spawnRate = 200; 
             } else if (level === 31) {
                 // Boss Fight
-                pool = [1, 3, 9, 10, 12, 16, 18, 19, 22];
+                pool = [1, 3, 9, 10, 12, 16, 18, 19, 22, 29];
                 spawnRate = 180;
             }
 
@@ -5242,6 +5334,7 @@
             unlockedBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
             unlockedBots.push(cardTypes.find(c => c.id === 27)); // Ultra Bomb (Available in endgame)
             if (level >= 27) unlockedBots.push(cardTypes.find(c => c.id === 28)); // Double Battery (Unlocked at Level 27)
+            if (level >= 25) unlockedBots.push(cardTypes.find(c => c.id === 29)); // Mech Bomb (Unlocked at Level 25)
             
             unlockedBots.forEach(bot => {
                 // Dynamically color the tile based on special IDs
@@ -5644,6 +5737,7 @@
             if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
+            if (level >= 25) pickableBots.push(cardTypes.find(c => c.id === 29)); // Mech Bomb (Unlocked at Level 25)
             if (level >= 31) pickableBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
 
             if (level >= 25 && level <= 31) {
@@ -5726,6 +5820,7 @@
             if (level >= 22) pickableBots.push(cardTypes.find(c => c.id === 21)); // Imitater Bot
             if (level >= 23) pickableBots.push(cardTypes.find(c => c.id === 22)); // Ultra Grenade
             if (level >= 24) pickableBots.push(cardTypes.find(c => c.id === 23)); // Frost Gate
+            if (level >= 25) pickableBots.push(cardTypes.find(c => c.id === 29)); // Mech Bomb (Unlocked at Level 25)
             if (level >= 31) pickableBots.push(cardTypes.find(c => c.id === 24)); // Ultra Puncher
             pickableBots.push(cardTypes.find(c => c.id === 25)); // Cannon Bot (Available in endgame)
             pickableBots.push(cardTypes.find(c => c.id === 26)); // Freeze Cannon (Available in endgame)
@@ -5747,6 +5842,7 @@
                         if (bot.id === 15) tileColor = '#14532d';
                         if (bot.id === 4 || bot.id === 27) tileColor = '#450a0a'; // Bomb units (dark red)
                         if (bot.id === 0 || bot.id === 28) tileColor = '#422006'; // Battery units (dark amber)
+                        if (bot.id === 29) tileColor = '#0f172a'; // Mech Bomb (sleek dark slate)
 
                         slotDiv.style.border = `2px solid ${bot.color}`;
                         slotDiv.style.background = tileColor;
@@ -5798,6 +5894,7 @@
                 if (bot.id === 15) tileColor = '#14532d';
                 if (bot.id === 4 || bot.id === 27) tileColor = '#450a0a'; // Bomb units (dark red)
                 if (bot.id === 0 || bot.id === 28) tileColor = '#422006'; // Battery units (dark amber)
+                if (bot.id === 29) tileColor = '#0f172a'; // Mech Bomb (sleek dark slate)
 
                 cardDiv.style.border = `2px solid ${bot.color}`;
                 cardDiv.style.background = tileColor;
