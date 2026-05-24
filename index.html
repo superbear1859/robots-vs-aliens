@@ -2063,7 +2063,7 @@
                 let cy = this.y + CELL_SIZE / 2;
                 
                 explosions.push(new Explosion(cx, cy, radiusMultiplier * CELL_SIZE));
-                let dmg = (this.isUltraBomb || this.isMechBomb) ? 5000 : 2000;
+                let dmg = this.isUltraBomb ? 5000 : (this.isMechBomb ? 3750 : 2000);
                 
                 for (let i = 0; i < attackers.length; i++) {
                     let ax = attackers[i].x + CELL_SIZE / 2;
@@ -5764,6 +5764,9 @@
                 
                 // Auto-fills slots initially to save player time
                 currentLoadout = pickableBots.slice(0, maxSlots).map(b => b.id);
+                if (level === 36 && !currentLoadout.includes(29)) {
+                    currentLoadout[currentLoadout.length - 1] = 29;
+                }
                 renderLoadout();
             }
         }
@@ -5849,6 +5852,9 @@
                         
                         let displaySymbol = getBotSymbolHTML(bot);
                         let displayName = bot.name;
+                        if (level === 36 && bot.id === 29) {
+                            displayName = "🔒 " + bot.name;
+                        }
                         if (bot.id === 21 && typeof imitaterChoice !== 'undefined' && imitaterChoice) {
                             displaySymbol = `<div style="filter: grayscale(100%) opacity(0.7); display:flex; align-items:center; justify-content:center;">
                                 ${getBotSymbolHTML(imitaterChoice)}
@@ -5868,10 +5874,14 @@
                             <span style="font-size:10px; color:#cbd5e1; margin-top:5px; text-align:center; line-height: 1;">${bot.id === 21 && imitaterChoice ? 'Imitating:' : ''} ${displayName}</span>
                             <span style="font-size:12px; color:#facc15; margin-top:3px; font-weight:bold;">${displayCost}⚡</span>
                         `;
-                        slotDiv.onclick = () => {
-                            currentLoadout.splice(i, 1);
-                            renderLoadout();
-                        };
+                        if (level === 36 && bot.id === 29) {
+                            slotDiv.style.cursor = 'not-allowed';
+                        } else {
+                            slotDiv.onclick = () => {
+                                currentLoadout.splice(i, 1);
+                                renderLoadout();
+                            };
+                        }
                     }
                 } else {
                     slotDiv.style.border = '2px dashed #475569';
