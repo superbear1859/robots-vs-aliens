@@ -722,6 +722,7 @@
         let wave = 1;
         let energy = 200;
         let ultraElectricity = 0;
+        let pendingUltraBonus = 0;
         let usingUltra = false;
         let gameOver = false;
         let gameRunning = false;
@@ -5676,6 +5677,12 @@
             gameOver = false;
             selectedCardType = null;
 
+            if (pendingUltraBonus > 0) {
+                ultraElectricity += pendingUltraBonus;
+                floatingTexts.push(new FloatingText(CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50, "+1 ULTRA ELECTRICITY!", "168, 85, 247"));
+                pendingUltraBonus = 0;
+            }
+
             // Initialize level specific card instances
             availableCards = [];
             for (let id of currentLoadout) {
@@ -6006,7 +6013,16 @@
             gameRunning = false;
             cancelAnimationFrame(animationId);
             SoundEngine.levelComplete(); 
-            document.getElementById('levelStats').innerText = `Score: ${score}`;
+            
+            let statsText = `Score: ${score}<br>End Energy: ⚡${energy}`;
+            if (energy > 2000) {
+                statsText += `<br><span style="color: #a855f7; text-shadow: 0 0 10px #a855f7;">🔋 Battery Bonus: +1 Ultra Electricity (Saved >2,000 Battery)</span>`;
+                pendingUltraBonus = 1;
+            } else {
+                pendingUltraBonus = 0;
+            }
+            document.getElementById('levelStats').innerHTML = statsText;
+            
             level++;
             levelCompleteScreen.classList.remove('hidden');
         }
@@ -6024,6 +6040,8 @@
             level = 1; 
             score = 0;
             levelStartScore = 0;
+            ultraElectricity = 0;
+            pendingUltraBonus = 0;
             openLoadoutScreen();
         });
 
@@ -6031,6 +6049,7 @@
             SoundEngine.init(); 
             // Restart the level by keeping the level variable the same, but reverting the score
             score = levelStartScore; 
+            pendingUltraBonus = 0;
             openLoadoutScreen();
         });
 
