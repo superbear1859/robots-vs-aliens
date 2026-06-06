@@ -4694,7 +4694,7 @@
                     }
                     
                     ultraElectricity--;
-                    if (ultraElectricity <= 0) usingUltra = false;
+                    usingUltra = false;
                     SoundEngine.energy();
                     let text = targetDef.isShield ? "ARMORED!" : "OVERDRIVE!";
                     floatingTexts.push(new FloatingText(targetDef.x + targetDef.width/2, targetDef.y, text, targetDef.isShield ? "148, 163, 184" : "168, 85, 247"));
